@@ -81,7 +81,7 @@ export default function Sidebar() {
                         </div>
                     </div>
                     <h1 className="text-2xl font-bold">
-                        Siam's App
+                        Siam&apos;s App
                     </h1>
                 </Link>
                 <div className="space-y-1">

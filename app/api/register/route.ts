@@ -37,13 +37,13 @@ export async function POST(req: Request) {
             },
         });
 
-        const { password: newUserPassword, ...rest } = user;
+        const { password: _, ...rest } = user;
 
         return NextResponse.json(
             { user: rest, message: "User created successfully" },
             { status: 201 }
         );
-    } catch (error) {
+    } catch {
         return NextResponse.json(
             { message: "Something went wrong" },
             { status: 500 }
