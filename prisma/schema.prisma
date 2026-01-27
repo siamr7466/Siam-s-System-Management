@@ -25,6 +25,7 @@ model User {
   budgetGoals   BudgetGoal[]
   files         File[]
   posts         BlogPost[]
+  savings       Saving[]
   reminders     Reminder[]
 }
 
@@ -108,6 +109,15 @@ model BudgetGoal {
   category  String
   limit     Float
   month     DateTime // Represents the month/year
+}
+
+model Saving {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Float
+  purpose   String
+  date      DateTime
 }
 
 // File Management

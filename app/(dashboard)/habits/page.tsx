@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { format, subDays, isSameDay, startOfDay } from "date-fns";
-import { Plus, Trash2, TrendingUp, Zap, Calendar as CalendarIcon, Check } from "lucide-react";
+import { format, isSameDay, startOfDay, startOfWeek, addDays } from "date-fns";
+import { Plus, Trash2, TrendingUp, Zap, Calendar as CalendarIcon, Check, MoreVertical, Activity, BookOpen, GlassWater, Dumbbell, Sun } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -26,6 +28,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 interface HabitLog {
     id: string;
@@ -42,6 +45,17 @@ interface Habit {
     logs: HabitLog[];
 }
 
+const ICONS: Record<string, any> = {
+    "Run": Activity,
+    "Walk": Activity,
+    "Read": BookOpen,
+    "Water": GlassWater,
+    "Gym": Dumbbell,
+    "Workout": Dumbbell,
+    "Morning": Sun,
+    "Default": Check
+};
+
 export default function HabitsPage() {
     const router = useRouter();
     const [habits, setHabits] = React.useState<Habit[]>([]);
@@ -52,28 +66,28 @@ export default function HabitsPage() {
     const [newHabitName, setNewHabitName] = React.useState("");
     const [newHabitDesc, setNewHabitDesc] = React.useState("");
     const [newHabitFreq, setNewHabitFreq] = React.useState("DAILY");
-    const [newHabitColor, setNewHabitColor] = React.useState("#8b5cf6"); // Default Purple
+    const [newHabitColor, setNewHabitColor] = React.useState("#8b5cf6");
 
-    // Generate last 7 days for the grid
+    // Calculate days for the CURRENT WEEK starting on Saturday
     const days = React.useMemo(() => {
+        const start = startOfWeek(new Date(), { weekStartsOn: 6 }); // 6 = Saturday
         return Array.from({ length: 7 }).map((_, i) => {
-            const date = subDays(new Date(), 6 - i);
+            const date = addDays(start, i);
             return {
                 date,
-                label: format(date, "EEE"), // Mon
-                day: format(date, "d"),     // 12
-                iso: startOfDay(date).toISOString()
+                label: format(date, "EEE"),
+                day: format(date, "d"),
+                iso: startOfDay(date).toISOString(),
+                isToday: isSameDay(date, new Date())
             };
         });
     }, []);
 
-    // Fetch Habits
     const fetchHabits = async () => {
         try {
             const res = await fetch("/api/habits");
             if (!res.ok) throw new Error("Failed to fetch");
             const data = await res.json();
-            // Parse dates in logs
             const parsedData = data.map((h: any) => ({
                 ...h,
                 logs: h.logs.map((l: any) => ({ ...l, date: l.date }))
@@ -90,10 +104,8 @@ export default function HabitsPage() {
         fetchHabits();
     }, []);
 
-    // Create Habit
     const handleCreateHabit = async () => {
         if (!newHabitName) return;
-
         try {
             const res = await fetch("/api/habits", {
                 method: "POST",
@@ -104,22 +116,18 @@ export default function HabitsPage() {
                     color: newHabitColor
                 })
             });
-
             if (!res.ok) throw new Error("Failed to create");
-
             toast.success("Habit created!");
             setIsDialogOpen(false);
             setNewHabitName("");
             setNewHabitDesc("");
-            fetchHabits(); // Reload
+            fetchHabits();
         } catch (error) {
             toast.error("Failed to create habit");
         }
     };
 
-    // Toggle Check-in
     const handleToggle = async (habitId: string, date: Date) => {
-        // Optimistic Update
         const targetDate = startOfDay(date).toISOString();
         const habitIndex = habits.findIndex(h => h.id === habitId);
         if (habitIndex === -1) return;
@@ -130,10 +138,8 @@ export default function HabitsPage() {
 
         const newHabits = [...habits];
         if (isCompleted) {
-            // Remove log
             newHabits[habitIndex].logs.splice(logIndex, 1);
         } else {
-            // Add fake log
             newHabits[habitIndex].logs.push({
                 id: "temp-" + Date.now(),
                 date: targetDate,
@@ -148,7 +154,6 @@ export default function HabitsPage() {
                 body: JSON.stringify({ date: targetDate })
             });
             if (!res.ok) {
-                // Revert on error
                 fetchHabits();
                 throw new Error("Failed to update");
             }
@@ -157,7 +162,6 @@ export default function HabitsPage() {
         }
     };
 
-    // Delete Habit
     const handleDelete = async (habitId: string) => {
         if (!confirm("Are you sure you want to delete this habit?")) return;
         try {
@@ -169,7 +173,7 @@ export default function HabitsPage() {
         }
     };
 
-    // Calculate Stats
+    // Stats
     const totalHabits = habits.length;
     const completedToday = habits.reduce((acc, h) => {
         const today = new Date();
@@ -178,52 +182,76 @@ export default function HabitsPage() {
     }, 0);
     const overallRate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
 
+    const getIcon = (name: string) => {
+        const key = Object.keys(ICONS).find(k => name.toLowerCase().includes(k.toLowerCase())) || "Default";
+        return ICONS[key];
+    };
+
+    // Data for Pie Chart
+    const pieData = [
+        { name: "Completed", value: completedToday, color: "#8b5cf6" },
+        { name: "Remaining", value: totalHabits - completedToday, color: "#e4e4e7" }, // zinc-200
+    ];
+
+    if (totalHabits === 0) {
+        pieData[1].value = 1; // Show empty ring
+    }
+
+    // Animation Variants
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 50 } }
+    };
+
     return (
-        <div className="flex flex-col gap-8 py-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="flex flex-col gap-8 py-8 h-full overflow-hidden"
+        >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Habit Tracker</h2>
-                    <p className="text-muted-foreground">Build consistency, one day at a time.</p>
-                </div>
+                <motion.div variants={itemVariants}>
+                    <h2 className="text-3xl font-bold tracking-tight">Daily Routines</h2>
+                    <p className="text-muted-foreground">"Your habits shape who you are."</p>
+                </motion.div>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-violet-600 hover:bg-violet-700 text-white">
-                            <Plus className="mr-2 h-4 w-4" /> New Habit
-                        </Button>
+                        <motion.div variants={itemVariants} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                            <Button className="bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/20 rounded-full px-6 transition-all duration-300">
+                                <Plus className="mr-2 h-4 w-4" /> New Habit
+                            </Button>
+                        </motion.div>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Create New Habit</DialogTitle>
-                            <DialogDescription>
-                                Defines a new routine you want to stick to.
-                            </DialogDescription>
+                            <DialogDescription>Defines a new routine you want to stick to.</DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="name">Habit Name</Label>
-                                <Input
-                                    id="name"
-                                    placeholder="e.g., Morning Meditation"
-                                    value={newHabitName}
-                                    onChange={(e) => setNewHabitName(e.target.value)}
-                                />
+                                <Input id="name" placeholder="e.g., Morning Meditation" value={newHabitName} onChange={(e) => setNewHabitName(e.target.value)} />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="desc">Description (Optional)</Label>
-                                <Input
-                                    id="desc"
-                                    placeholder="10 minutes of mindfulness"
-                                    value={newHabitDesc}
-                                    onChange={(e) => setNewHabitDesc(e.target.value)}
-                                />
+                                <Input id="desc" placeholder="10 minutes of mindfulness" value={newHabitDesc} onChange={(e) => setNewHabitDesc(e.target.value)} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
                                     <Label>Frequency</Label>
                                     <Select value={newHabitFreq} onValueChange={setNewHabitFreq}>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="DAILY">Daily</SelectItem>
                                             <SelectItem value="WEEKLY">Weekly</SelectItem>
@@ -232,10 +260,23 @@ export default function HabitsPage() {
                                 </div>
                                 <div className="grid gap-2">
                                     <Label>Color</Label>
-                                    <div className="flex gap-2 mt-2">
-                                        {["#8b5cf6", "#ec4899", "#10b981", "#f59e0b", "#3b82f6"].map((c) => (
-                                            <div
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        {[
+                                            "#8b5cf6", // Violet
+                                            "#ec4899", // Pink
+                                            "#10b981", // Emerald
+                                            "#f59e0b", // Amber
+                                            "#3b82f6", // Blue
+                                            "#ef4444", // Red
+                                            "#06b6d4", // Cyan
+                                            "#84cc16", // Lime
+                                            "#d946ef", // Fuchsia
+                                            "#f97316"  // Orange
+                                        ].map((c) => (
+                                            <motion.div
                                                 key={c}
+                                                whileHover={{ scale: 1.2 }}
+                                                whileTap={{ scale: 0.9 }}
                                                 className={`w-6 h-6 rounded-full cursor-pointer ring-2 ring-offset-2 ${newHabitColor === c ? "ring-zinc-900 dark:ring-white" : "ring-transparent"}`}
                                                 style={{ backgroundColor: c }}
                                                 onClick={() => setNewHabitColor(c)}
@@ -253,121 +294,230 @@ export default function HabitsPage() {
                 </Dialog>
             </div>
 
-            {/* Stats Row */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card className="bg-gradient-to-br from-violet-500/10 to-violet-500/5 border-violet-200/50 dark:border-violet-900/50">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Active Habits</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-violet-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalHabits}</div>
-                        <p className="text-xs text-muted-foreground">Tracking {totalHabits} routines</p>
-                    </CardContent>
-                </Card>
-                <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-200/50 dark:border-emerald-900/50">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Today's Completion</CardTitle>
-                        <Zap className="h-4 w-4 text-emerald-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{overallRate}%</div>
-                        <p className="text-xs text-muted-foreground">{completedToday} of {totalHabits} completed</p>
-                    </CardContent>
-                </Card>
-                <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-200/50 dark:border-amber-900/50">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Current Day</CardTitle>
-                        <CalendarIcon className="h-4 w-4 text-amber-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{format(new Date(), "dd MMM")}</div>
-                        <p className="text-xs text-muted-foreground">{format(new Date(), "EEEE")}</p>
-                    </CardContent>
-                </Card>
-            </div>
+            {/* Main Content Grid: 3 Columns on Large Screens */}
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 flex-1 overflow-hidden min-h-0">
 
-            {/* Main Habits Grid */}
-            <Card className="border-none shadow-md bg-white dark:bg-zinc-900/50 min-h-[500px]">
-                <CardHeader>
-                    <CardTitle>Weekly Progress</CardTitle>
-                    <CardDescription>Click on a box to toggle completion.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                        <div className="flex items-center justify-center h-40 text-muted-foreground">Loading habits...</div>
-                    ) : habits.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-60 text-center">
-                            <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
-                                <Zap className="h-8 w-8 text-zinc-400" />
+                {/* Column 1: Overall Progress & Stats */}
+                <motion.div variants={itemVariants} className="flex flex-col gap-6">
+                    <Card className="border-none shadow-md bg-white dark:bg-zinc-900/50 flex flex-col justify-between flex-1 group hover:shadow-xl transition-all duration-300">
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <CardTitle>Overall Progress</CardTitle>
+                                <Select defaultValue="today">
+                                    <SelectTrigger className="w-[100px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="today">Today</SelectItem>
+                                        <SelectItem value="week">Weekly</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
-                            <h3 className="text-lg font-semibold">No habits yet</h3>
-                            <p className="text-muted-foreground max-w-sm mt-2">Start by creating your first habit using the "New Habit" button above.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-6">
-                            {/* Header Row */}
-                            <div className="grid grid-cols-[1fr,repeat(7,minmax(40px,1fr)),40px] gap-2 md:gap-4 items-end mb-2 border-b pb-4 dark:border-zinc-800">
-                                <div className="font-semibold text-muted-foreground text-sm uppercase tracking-wider pl-2">Habit</div>
-                                {days.map((day) => (
-                                    <div key={day.iso} className="flex flex-col items-center text-center">
-                                        <span className="text-[10px] uppercase text-muted-foreground font-bold">{day.label}</span>
-                                        <span className={`text-sm font-bold mt-1 h-8 w-8 flex items-center justify-center rounded-full ${isSameDay(day.date, new Date()) ? "bg-black text-white dark:bg-white dark:text-black" : ""
-                                            }`}>
-                                            {day.day}
-                                        </span>
-                                    </div>
-                                ))}
-                                <div className="w-10"></div>
-                            </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 flex flex-col items-center justify-center relative min-h-[200px]">
+                            <motion.div
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ type: "spring", stiffness: 100, delay: 0.6 }}
+                                className="h-48 w-full relative flex items-center justify-center"
+                            >
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={pieData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                            startAngle={90}
+                                            endAngle={-270}
+                                            stroke="none"
+                                            cornerRadius={10}
+                                        >
+                                            {pieData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                    </PieChart>
+                                </ResponsiveContainer>
+                                <motion.div
+                                    className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+                                    initial={{ scale: 0.5, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    transition={{ delay: 0.8 }}
+                                >
+                                    <span className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-500 to-fuchsia-500">
+                                        {overallRate}%
+                                    </span>
+                                </motion.div>
+                            </motion.div>
+                            <p className="text-sm text-muted-foreground mt-4 text-center">
+                                You're doing great! Keep it up.
+                            </p>
+                        </CardContent>
+                    </Card>
 
-                            {/* Habit Rows */}
-                            {habits.map((habit) => (
-                                <div key={habit.id} className="grid grid-cols-[1fr,repeat(7,minmax(40px,1fr)),40px] gap-2 md:gap-4 items-center group">
-                                    <div className="pl-2">
-                                        <div className="font-semibold text-base">{habit.name}</div>
-                                        {habit.description && <div className="text-xs text-muted-foreground">{habit.description}</div>}
-                                    </div>
+                    <div className="grid gap-4 grid-cols-2">
+                        <motion.div whileHover={{ y: -5 }} transition={{ type: "spring", stiffness: 300 }}>
+                            <Card className="bg-violet-500/10 border-none shadow-sm hover:bg-violet-500/20 transition-colors">
+                                <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                                    <TrendingUp className="h-5 w-5 text-violet-500 mb-2" />
+                                    <div className="text-xl font-bold">{totalHabits}</div>
+                                    <span className="text-xs text-muted-foreground">Active</span>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
+                        <motion.div whileHover={{ y: -5 }} transition={{ type: "spring", stiffness: 300 }}>
+                            <Card className="bg-emerald-500/10 border-none shadow-sm hover:bg-emerald-500/20 transition-colors">
+                                <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                                    <Zap className="h-5 w-5 text-emerald-500 mb-2" />
+                                    <div className="text-xl font-bold">{completedToday}</div>
+                                    <span className="text-xs text-muted-foreground">Done</span>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
+                    </div>
+                </motion.div>
 
-                                    {days.map((day) => {
-                                        const isCompleted = habit.logs.some(log => isSameDay(new Date(log.date), day.date));
-                                        return (
-                                            <button
-                                                key={day.iso}
-                                                onClick={() => handleToggle(habit.id, day.date)}
-                                                className={`
-                                                    h-10 w-full md:h-12 md:w-full rounded-xl transition-all duration-300 flex items-center justify-center
-                                                    ${isCompleted
-                                                        ? "opacity-100 shadow-sm scale-100"
-                                                        : "bg-zinc-100 dark:bg-zinc-800/50 hover:bg-zinc-200 dark:hover:bg-zinc-800 opacity-50 hover:opacity-100"
-                                                    }
-                                                `}
-                                                style={{
-                                                    backgroundColor: isCompleted ? habit.color : undefined,
-                                                    color: isCompleted ? "white" : undefined
-                                                }}
+                {/* Column 2: Weekly Consistency Grid */}
+                <motion.div variants={itemVariants} className="col-span-1">
+                    <Card className="h-full border-none shadow-md bg-white dark:bg-zinc-900/50 overflow-hidden flex flex-col group hover:shadow-xl transition-all duration-500">
+                        <CardHeader>
+                            <CardTitle>Consistency</CardTitle>
+                            <CardDescription>This Week (Sat - Fri)</CardDescription>
+                        </CardHeader>
+                        <CardContent className="overflow-y-auto flex-1 pr-1">
+                            <div className="min-w-[300px] space-y-4">
+                                {/* Header */}
+                                <div className="flex items-end justify-between mb-2 pb-2 border-b dark:border-zinc-800 gap-2">
+                                    <span className="text-xs font-bold text-muted-foreground uppercase w-20 truncate">Habit</span>
+                                    <div className="flex-1 flex justify-between">
+                                        {days.map((d, i) => (
+                                            <motion.div
+                                                key={d.iso}
+                                                initial={{ opacity: 0, y: -10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: 0.5 + (i * 0.1) }}
+                                                className="flex flex-col items-center w-6"
                                             >
-                                                {isCompleted && <Check className="h-5 w-5 md:h-6 md:w-6 animate-in zoom-in-50 duration-200" strokeWidth={3} />}
-                                            </button>
+                                                <span className={cn("text-[10px] uppercase mb-1", d.isToday ? "text-violet-500 font-bold" : "text-muted-foreground")}>{d.label[0]}</span>
+                                                <span className={cn("text-[10px] w-5 h-5 flex items-center justify-center rounded-full", d.isToday ? "bg-violet-500 text-white" : "text-zinc-500")}>{d.day}</span>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                    <span className="w-6" />
+                                </div>
+
+                                <AnimatePresence>
+                                    {habits.map((habit, index) => (
+                                        <motion.div
+                                            key={habit.id}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            transition={{ delay: index * 0.05 }}
+                                            className="flex items-center justify-between gap-2 group/row hover:bg-zinc-50 dark:hover:bg-zinc-800/30 p-2 rounded-lg transition-colors"
+                                        >
+                                            <div className="font-medium text-sm w-20 truncate" title={habit.name}>{habit.name}</div>
+                                            <div className="flex-1 flex justify-between">
+                                                {days.map(d => {
+                                                    const isDone = habit.logs.some(l => isSameDay(new Date(l.date), d.date));
+                                                    // Check if day is in future
+                                                    const isFuture = d.date > new Date();
+
+                                                    return (
+                                                        <div key={d.iso} className="flex justify-center w-6">
+                                                            {!isFuture ? (
+                                                                <motion.div
+                                                                    whileHover={{ scale: 1.5 }}
+                                                                    className={cn("w-2 h-8 rounded-full transition-all duration-300", isDone ? "opacity-100 shadow-[0_0_10px_rgba(139,92,246,0.3)]" : "opacity-20 bg-zinc-300 dark:bg-zinc-700")}
+                                                                    style={{ backgroundColor: isDone ? habit.color : undefined }}
+                                                                />
+                                                            ) : (
+                                                                <div className="w-2 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800/50 opacity-20" />
+                                                            )}
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                            <div className="w-6 flex justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDelete(habit.id)}>
+                                                    <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                                                </Button>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+
+                {/* Column 3: Today's Routine List */}
+                <motion.div variants={itemVariants} className="col-span-1">
+                    <Card className="h-full border-none shadow-md bg-white dark:bg-zinc-900/50 flex flex-col group hover:shadow-xl transition-all duration-500">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle>Today</CardTitle>
+                            <span className="text-sm font-medium text-violet-500 cursor-pointer hover:underline">See All</span>
+                        </CardHeader>
+                        <CardContent className="space-y-3 overflow-y-auto flex-1 pr-1 custom-scrollbar">
+                            {isLoading ? <div className="py-8 text-center text-muted-foreground">Loading...</div> : habits.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                                    <p>No habits for today.</p>
+                                </div>
+                            ) : (
+                                <AnimatePresence>
+                                    {habits.map((habit) => {
+                                        const Icon = getIcon(habit.name);
+                                        const isCompleted = habit.logs.some(l => isSameDay(new Date(l.date), new Date()));
+                                        return (
+                                            <motion.div
+                                                key={habit.id}
+                                                layout
+                                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 0.9 }}
+                                                whileHover={{ scale: 1.02 }}
+                                                className="flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/30 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors group cursor-pointer border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 shadow-sm hover:shadow-md"
+                                            >
+                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                    <div className="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110" style={{ backgroundColor: `${habit.color}20`, color: habit.color }}>
+                                                        <Icon className="h-5 w-5" />
+                                                    </div>
+                                                    <div className="truncate">
+                                                        <h4 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{habit.name}</h4>
+                                                        <p className="text-xs text-muted-foreground truncate">{habit.description || "Daily"}</p>
+                                                    </div>
+                                                </div>
+                                                <motion.button
+                                                    whileTap={{ scale: 0.8 }}
+                                                    onClick={() => handleToggle(habit.id, new Date())}
+                                                    className={cn(
+                                                        "h-8 w-8 shrink-0 rounded-full border-2 flex items-center justify-center transition-all duration-300",
+                                                        isCompleted ? "border-transparent text-white shadow-lg" : "border-zinc-300 dark:border-zinc-600 text-transparent hover:border-violet-500"
+                                                    )}
+                                                    style={{
+                                                        backgroundColor: isCompleted ? habit.color : "transparent",
+                                                        boxShadow: isCompleted ? `0 0 10px ${habit.color}80` : "none"
+                                                    }}
+                                                >
+                                                    <motion.div
+                                                        initial={{ scale: 0 }}
+                                                        animate={{ scale: isCompleted ? 1 : 0 }}
+                                                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                                    >
+                                                        <Check className="h-4 w-4" strokeWidth={4} />
+                                                    </motion.div>
+                                                </motion.button>
+                                            </motion.div>
                                         );
                                     })}
-
-                                    <div className="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-muted-foreground hover:text-rose-500"
-                                            onClick={() => handleDelete(habit.id)}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
+                                </AnimatePresence>
+                            )}
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            </div>
+        </motion.div>
     );
 }

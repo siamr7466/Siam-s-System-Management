@@ -11,7 +11,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Sidebar from "./sidebar";
@@ -29,6 +29,7 @@ export default function Navbar() {
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="p-0 bg-[#111827]">
+                    <SheetTitle className="sr-only">Mobile Menu</SheetTitle>
                     <Sidebar />
                 </SheetContent>
             </Sheet>
