@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useSession } from "next-auth/react";
 import {
     CheckCircle2,
@@ -29,37 +30,6 @@ import {
     CardHeader,
     CardTitle
 } from "@/components/ui/card";
-
-// Enhanced Mock Data with individual track habits
-const data = [
-    { name: "Mon", total: 65, coding: 70, fitness: 60, reading: 50 },
-    { name: "Tue", total: 78, coding: 85, fitness: 65, reading: 80 },
-    { name: "Wed", total: 95, coding: 90, fitness: 95, reading: 100 },
-    { name: "Thu", total: 85, coding: 80, fitness: 85, reading: 90 },
-    { name: "Fri", total: 92, coding: 95, fitness: 90, reading: 85 },
-    { name: "Sat", total: 88, coding: 100, fitness: 80, reading: 70 },
-    { name: "Sun", total: 96, coding: 98, fitness: 95, reading: 92 },
-];
-
-const todoData = [
-    { name: "Mon", rate: 50, high: 40, medium: 70 },
-    { name: "Tue", rate: 65, high: 55, medium: 75 },
-    { name: "Wed", rate: 80, high: 70, medium: 85 },
-    { name: "Thu", rate: 75, high: 60, medium: 80 },
-    { name: "Fri", rate: 90, high: 85, medium: 95 },
-    { name: "Sat", rate: 85, high: 90, medium: 80 },
-    { name: "Sun", rate: 60, high: 50, medium: 70 },
-];
-
-const budgetData = [
-    { name: "Mon", saved: 500, income: 2000, expense: 1500 },
-    { name: "Tue", saved: 800, income: 2200, expense: 1400 },
-    { name: "Wed", saved: 1200, income: 2500, expense: 1300 },
-    { name: "Thu", saved: 400, income: 1800, expense: 1400 },
-    { name: "Fri", saved: 1500, income: 3000, expense: 1500 },
-    { name: "Sat", saved: 200, income: 1500, expense: 1300 },
-    { name: "Sun", saved: 1000, income: 2000, expense: 1000 },
-];
 
 interface StatCardProps {
     title: string;
@@ -136,6 +106,37 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 
 export default function DashboardPage() {
     const { data: session } = useSession();
+    const [data, setData] = React.useState<any[]>([]);
+    const [todoData, setTodoData] = React.useState<any[]>([]);
+    const [budgetData, setBudgetData] = React.useState<any[]>([]);
+    const [stats, setStats] = React.useState<any>({});
+    const [topHabits, setTopHabits] = React.useState<any[]>([]);
+    const [isLoading, setIsLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const res = await fetch("/api/dashboard");
+                if (res.ok) {
+                    const json = await res.json();
+                    setData(json.habitData);
+                    setTodoData(json.todoData);
+                    setBudgetData(json.budgetData);
+                    setStats(json.stats);
+                    setTopHabits(json.topHabits);
+                }
+            } catch (error) {
+                console.error("Failed to fetch dashboard data", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    if (isLoading) {
+        return <div className="flex items-center justify-center min-h-screen text-muted-foreground animate-pulse">Loading dashboard...</div>;
+    }
 
     return (
         <div className="flex flex-col gap-y-8 py-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -151,38 +152,38 @@ export default function DashboardPage() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatCard
                     title="Habit Completion"
-                    value="88%"
-                    description="+12% from yesterday"
+                    value={stats.habitCompletion || "0%"}
+                    description="Today's goal rate"
                     icon={CheckCircle2}
                     trend="up"
-                    trendValue="4%"
+                    trendValue=""
                     color="text-violet-500"
                 />
                 <StatCard
                     title="Pending Tasks"
-                    value="12"
-                    description="4 due today"
+                    value={`${stats.pendingTasks || 0}`}
+                    description="Active items"
                     icon={ListTodo}
                     trend="down"
-                    trendValue="2"
+                    trendValue=""
                     color="text-pink-500"
                 />
                 <StatCard
                     title="Monthly Savings"
-                    value="৳2,450"
-                    description="+18% from last month"
+                    value={`৳${(stats.monthlySavings || 0).toLocaleString()}`}
+                    description="Net income this month"
                     icon={TrendingUp}
                     trend="up"
-                    trendValue="৳450"
+                    trendValue=""
                     color="text-emerald-500"
                 />
                 <StatCard
                     title="Focus Score"
-                    value="92"
-                    description="Top 5% this week"
+                    value={`${stats.focusScore || 0}`}
+                    description="Productivity Index"
                     icon={Zap}
                     trend="up"
-                    trendValue="7"
+                    trendValue=""
                     color="text-amber-500"
                 />
             </div>
@@ -236,39 +237,20 @@ export default function DashboardPage() {
                                         animationDuration={1500}
                                         animationEasing="ease-in-out"
                                     />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="coding"
-                                        name="Coding"
-                                        stroke="#3b82f6"
-                                        strokeWidth={2}
-                                        dot={false}
-                                        activeDot={{ r: 6, strokeWidth: 0 }}
-                                        strokeOpacity={0.7}
-                                        animationDuration={1500}
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="fitness"
-                                        name="Fitness"
-                                        stroke="#10b981"
-                                        strokeWidth={2}
-                                        dot={false}
-                                        activeDot={{ r: 6, strokeWidth: 0 }}
-                                        strokeOpacity={0.7}
-                                        animationDuration={1500}
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="reading"
-                                        name="Reading"
-                                        stroke="#f43f5e"
-                                        strokeWidth={2}
-                                        dot={false}
-                                        activeDot={{ r: 6, strokeWidth: 0 }}
-                                        strokeOpacity={0.7}
-                                        animationDuration={1500}
-                                    />
+                                    {topHabits.map((habit: any, index: number) => (
+                                        <Line
+                                            key={habit.key}
+                                            type="monotone"
+                                            dataKey={habit.key}
+                                            name={habit.name}
+                                            stroke={["#3b82f6", "#10b981", "#f43f5e"][index % 3]}
+                                            strokeWidth={2}
+                                            dot={false}
+                                            activeDot={{ r: 6, strokeWidth: 0 }}
+                                            strokeOpacity={0.7}
+                                            animationDuration={1500}
+                                        />
+                                    ))}
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
@@ -279,30 +261,13 @@ export default function DashboardPage() {
                     <CardHeader>
                         <CardTitle>Upcoming Tasks</CardTitle>
                         <CardDescription>
-                            You have {4} tasks due in the next 24 hours.
+                            You have {stats.pendingTasks || 0} tasks pending.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-6">
-                            {[
-                                { title: "Design System Update", time: "2h remaining", priority: "High" },
-                                { title: "Review Budget Sheet", time: "5h remaining", priority: "Medium" },
-                                { title: "Read 20 pages", time: "8h remaining", priority: "Low" },
-                                { title: "Client Meeting", time: "Tomorrow", priority: "High" },
-                            ].map((task, i) => (
-                                <div key={i} className="flex items-center group">
-                                    <div className="space-y-1 flex-1">
-                                        <p className="text-sm font-medium leading-none group-hover:text-violet-500 transition-colors">{task.title}</p>
-                                        <p className="text-xs text-muted-foreground">{task.time}</p>
-                                    </div>
-                                    <div className={`text-xs px-2 py-1 rounded-full font-semibold ${task.priority === "High" ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" :
-                                        task.priority === "Medium" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
-                                            "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                                        }`}>
-                                        {task.priority}
-                                    </div>
-                                </div>
-                            ))}
+                        <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground">
+                            <ListTodo className="h-12 w-12 mb-4 opacity-20" />
+                            <p>Check the Tasks page for full details</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -371,6 +336,6 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
-        </div >
+        </div>
     );
 }
