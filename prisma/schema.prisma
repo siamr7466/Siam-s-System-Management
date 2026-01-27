@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// User Model
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String?    // Hashed, nullable for OAuth
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  habits        Habit[]
+  tasks         Task[]
+  focusSessions FocusSession[]
+  incomes       Income[]
+  expenses      Expense[]
+  budgetGoals   BudgetGoal[]
+  files         File[]
+  posts         BlogPost[]
+  reminders     Reminder[]
+}
+
+// Habit System
+model Habit {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  frequency     String    // DAILY, WEEKLY, CUSTOM
+  scoreWeight   Int       @default(1)
+  logs          HabitLog[]
+  reminders     Reminder[]
+  color         String?
+  createdAt     DateTime  @default(now())
+}
+
+model HabitLog {
+  id        String   @id @default(cuid())
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  date      DateTime 
+  completed Boolean  @default(false)
+  score     Int      @default(0)
+}
+
+// Todo & Focus
+model Task {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      String   // PENDING, IN_PROGRESS, DONE
+  priority    String   // LOW, MEDIUM, HIGH
+  dueDate     DateTime?
+  tags        String[]
+  files       File[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  focusSessions FocusSession[]
+  reminders   Reminder[]
+}
+
+model FocusSession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  duration  Int      // Seconds
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// Budget System
+model Income {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Float
+  source    String
+  date      DateTime
+  recurring Boolean  @default(false)
+}
+
+model Expense {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Float
+  category  String
+  description String?
+  date      DateTime
+}
+
+model BudgetGoal {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  String
+  limit     Float
+  month     DateTime // Represents the month/year
+}
+
+// File Management
+model File {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url       String
+  name      String
+  type      String
+  size      Int
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id])
+  postId    String?
+  post      BlogPost? @relation(fields: [postId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// Blog System
+model BlogPost {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  content   String   // HTML/JSON from TipTap
+  published Boolean  @default(false)
+  tags      String[]
+  views     Int      @default(0)
+  files     File[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Reminder System
+model Reminder {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  scheduledAt DateTime
+  type      String   // HABIT, TASK, BUDGET, GENERIC
+  referenceId String? // e.g., habitId or taskId
+  habitId   String?
+  habit     Habit?   @relation(fields: [habitId], references: [id])
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id])
+  sent      Boolean  @default(false)
+}
