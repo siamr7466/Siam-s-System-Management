@@ -10,12 +10,19 @@ export async function GET() {
     };
 
     try {
+        // Test 0: Env Check
+        report.env = {
+            has_db_url: !!process.env.DATABASE_URL,
+            has_auth_secret: !!process.env.NEXTAUTH_SECRET,
+            db_url_preview: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 15) + "..." : "MISSING",
+        };
+
         // Test 1: Simple DB Query
         await prisma.$queryRaw`SELECT 1`;
         report.database = "Connected successfully!";
     } catch (e: any) {
         report.database = "FAILED: " + e.message;
-        report.db_error_details = e.stack;
+        report.db_error_code = e.code;
     }
 
     try {
