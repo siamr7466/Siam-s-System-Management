@@ -11,8 +11,13 @@ export async function getUserId() {
         console.error("Session error:", error);
     }
 
-    // Fallback: If no session, return a default user ID or just handle it as guest.
-    // In "no-auth" mode, we'll return a constant ID or fetch the first user from the DB.
-    // For now, let's return a placeholder that matches the first user in the system if exists.
+    // Fallback: Use the first user in the database
+    try {
+        const firstUser = await prisma.user.findFirst();
+        if (firstUser) return firstUser.id;
+    } catch (error) {
+        console.error("Fallback user error:", error);
+    }
+
     return "guest-user-id";
 }
