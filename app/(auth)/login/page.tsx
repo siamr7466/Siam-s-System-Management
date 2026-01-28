@@ -56,8 +56,7 @@ export default function LoginPage() {
         setIsLoading(false);
 
         if (!signInResult?.ok) {
-            // For now using alert/console, ideally use toast
-            alert("Something went wrong. Your sign in request failed. Please try again.");
+            toast.error("Something went wrong. Your sign in request failed. Please try again.");
             return;
         }
 

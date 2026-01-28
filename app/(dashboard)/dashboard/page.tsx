@@ -1,7 +1,8 @@
 "use client";
+import { useSession } from "next-auth/react";
 
 import * as React from "react";
-import { useSession } from "next-auth/react";
+
 import {
     CheckCircle2,
     ListTodo,
@@ -30,6 +31,15 @@ import {
     CardHeader,
     CardTitle
 } from "@/components/ui/card";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface StatCardProps {
     title: string;
@@ -106,11 +116,14 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 
 export default function DashboardPage() {
     const { data: session } = useSession();
+    const firstName = session?.user?.name?.split(" ")[0] || "Siam";
+
     const [data, setData] = React.useState<any[]>([]);
     const [todoData, setTodoData] = React.useState<any[]>([]);
     const [budgetData, setBudgetData] = React.useState<any[]>([]);
     const [stats, setStats] = React.useState<any>({});
     const [topHabits, setTopHabits] = React.useState<any[]>([]);
+    const [upcomingTasks, setUpcomingTasks] = React.useState<any[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
 
     React.useEffect(() => {
@@ -124,6 +137,7 @@ export default function DashboardPage() {
                     setBudgetData(json.budgetData);
                     setStats(json.stats);
                     setTopHabits(json.topHabits);
+                    setUpcomingTasks(json.upcomingTasks || []);
                 }
             } catch (error) {
                 console.error("Failed to fetch dashboard data", error);
@@ -134,22 +148,23 @@ export default function DashboardPage() {
         fetchData();
     }, []);
 
-    if (isLoading) {
-        return <div className="flex items-center justify-center min-h-screen text-muted-foreground animate-pulse">Loading dashboard...</div>;
-    }
+
 
     return (
-        <div className="flex flex-col gap-y-8 py-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div>
-                <h2 className="text-3xl font-bold tracking-tight">
-                    Welcome back, {session?.user?.name?.split(" ")[0] || "User"}!
+        <div className={cn(
+            "flex flex-col gap-y-8 py-8 animate-in fade-in slide-in-from-bottom-4 duration-700",
+            isLoading && "opacity-50 pointer-events-none"
+        )}>
+            <div className="px-4 md:px-0">
+                <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+                    Welcome back, {firstName}!
                 </h2>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground text-sm md:text-base">
                     Here&apos;s what&apos;s happening with your productivity today.
                 </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 px-4 md:px-0">
                 <StatCard
                     title="Habit Completion"
                     value={stats.habitCompletion || "0%"}
@@ -188,8 +203,8 @@ export default function DashboardPage() {
                 />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-4 border-none shadow-md bg-white dark:bg-zinc-900/50">
+            <div className="grid gap-4 lg:grid-cols-7 px-4 md:px-0">
+                <Card className="col-span-full lg:col-span-4 border-none shadow-md bg-white dark:bg-zinc-900/50">
                     <CardHeader>
                         <CardTitle>Live Habit Persistence</CardTitle>
                         <CardDescription>
@@ -257,7 +272,7 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="col-span-3 border-none shadow-md bg-white dark:bg-zinc-900/50">
+                <Card className="col-span-full lg:col-span-3 border-none shadow-md bg-white dark:bg-zinc-900/50">
                     <CardHeader>
                         <CardTitle>Upcoming Tasks</CardTitle>
                         <CardDescription>
@@ -265,15 +280,35 @@ export default function DashboardPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground">
-                            <ListTodo className="h-12 w-12 mb-4 opacity-20" />
-                            <p>Check the Tasks page for full details</p>
+                        <div className="space-y-4">
+                            {upcomingTasks.slice(0, 5).map((task: any) => (
+                                <div key={task.id} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 transition-all group">
+                                    <div className={cn(
+                                        "w-2 h-2 rounded-full",
+                                        task.priority === "HIGH" ? "bg-rose-500" :
+                                            task.priority === "MEDIUM" ? "bg-amber-500" : "bg-emerald-500"
+                                    )} />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{task.title}</p>
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{task.status.replace('_', ' ')}</p>
+                                    </div>
+                                    <Badge variant="outline" className="text-[10px] h-5 rounded-full px-2 opacity-50">
+                                        {task.priority}
+                                    </Badge>
+                                </div>
+                            ))}
+                            {upcomingTasks.length === 0 && (
+                                <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+                                    <ListTodo className="h-12 w-12 mb-4 opacity-20" />
+                                    <p className="text-sm">No pending tasks</p>
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 mt-4">
+            <div className="grid gap-4 lg:grid-cols-2 mt-4 px-4 md:px-0">
                 <Card className="border-none shadow-md bg-white dark:bg-zinc-900/50">
                     <CardHeader>
                         <CardTitle>Todo Completion Rate</CardTitle>
@@ -306,11 +341,30 @@ export default function DashboardPage() {
                 </Card>
 
                 <Card className="border-none shadow-md bg-white dark:bg-zinc-900/50">
-                    <CardHeader>
-                        <CardTitle>Budget Analytics</CardTitle>
-                        <CardDescription>
-                            Daily income vs expense tracking.
-                        </CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle>Budget Analytics</CardTitle>
+                            <CardDescription>
+                                Daily income vs expense tracking.
+                            </CardDescription>
+                        </div>
+                        <Select
+                            defaultValue="week"
+                            onValueChange={async (v: string) => {
+                                const res = await fetch(`/api/dashboard?range=${v}`);
+                                const json = await res.json();
+                                setBudgetData(json.budgetData);
+                            }}
+                        >
+                            <SelectTrigger className="w-[120px] h-8 text-xs">
+                                <SelectValue placeholder="Range" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="day">Past 24h</SelectItem>
+                                <SelectItem value="week">Past Week</SelectItem>
+                                <SelectItem value="month">Past Month</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </CardHeader>
                     <CardContent className="pl-0">
                         <div className="h-[300px] w-full">

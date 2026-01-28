@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getSessionUserId } from "@/lib/auth-helper";
 
 export async function GET() {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    const userId = await getSessionUserId();
+    if (!userId) {
         return new NextResponse("Unauthorized", { status: 401 });
     }
 
     try {
         const tasks = await prisma.task.findMany({
             where: {
-                userId: session.user.id
+                userId: userId
             },
             orderBy: {
                 createdAt: 'desc'
@@ -26,8 +25,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    const userId = await getSessionUserId();
+    if (!userId) {
         return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -37,7 +36,7 @@ export async function POST(req: Request) {
 
         const task = await prisma.task.create({
             data: {
-                userId: session.user.id,
+                userId: userId,
                 title,
                 description,
                 status: "PENDING",

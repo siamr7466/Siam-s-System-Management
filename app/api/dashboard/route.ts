@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
-import { startOfDay, endOfDay, subDays, format, isSameDay } from "date-fns";
+import { getSessionUserId } from "@/lib/auth-helper";
+import { startOfDay, endOfDay, subDays, subHours, format, isSameDay } from "date-fns";
 
 export async function GET(req: Request) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user) {
+        const userId = await getSessionUserId();
+        if (!userId) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
-
-        const userId = session.user.id;
         const today = new Date();
         const last7Days = Array.from({ length: 7 }).map((_, i) => subDays(today, 6 - i));
 
@@ -25,8 +22,8 @@ export async function GET(req: Request) {
             const dayStr = format(day, "EEE"); // Mon, Tue...
             // Total persistence
             const activeCount = allHabits.length; // Assuming all habits active
-            const completedCount = allHabits.filter(h =>
-                h.logs.some(l => isSameDay(new Date(l.date), day))
+            const completedCount = allHabits.filter((h: any) =>
+                h.logs.some((l: any) => isSameDay(new Date(l.date), day))
             ).length;
 
             const percentage = activeCount > 0 ? Math.round((completedCount / activeCount) * 100) : 0;
@@ -34,8 +31,8 @@ export async function GET(req: Request) {
             // Specific Habits (Pick top 3 or specific names if available)
             // We'll map dynamic keys like "Habit 1", "Habit 2" if we can't find specific categories
             const specificHabits: any = {};
-            allHabits.slice(0, 3).forEach((h, i) => {
-                const isDone = h.logs.some(l => isSameDay(new Date(l.date), day));
+            allHabits.slice(0, 3).forEach((h: any, i: number) => {
+                const isDone = h.logs.some((l: any) => isSameDay(new Date(l.date), day));
                 // Sanitize name for key
                 const key = h.name.toLowerCase().replace(/[^a-z0-9]/g, '');
                 specificHabits[key] = isDone ? 100 : 0; // Binary 0/100 for line? Or accumulated?
@@ -56,7 +53,7 @@ export async function GET(req: Request) {
         // We need "completed" tasks per day.
         const completedTasksLast7Days = await prisma.task.findMany({
             where: {
-                userId,
+                userId: userId,
                 status: "DONE",
                 updatedAt: {
                     gte: startOfDay(subDays(today, 7))
@@ -66,16 +63,10 @@ export async function GET(req: Request) {
 
         const todoData = last7Days.map(day => {
             const dayStr = format(day, "EEE");
-            const tasksDoneOnDay = completedTasksLast7Days.filter(t => isSameDay(new Date(t.updatedAt), day));
+            const tasksDoneOnDay = completedTasksLast7Days.filter((t: any) => isSameDay(new Date(t.updatedAt), day));
 
-            const highCount = tasksDoneOnDay.filter(t => t.priority === "HIGH").length;
-            const mediumCount = tasksDoneOnDay.filter(t => t.priority === "MEDIUM").length;
-
-            // Rate? Hard to calculate "Total" tasks for that day historically without snapshotting.
-            // We'll approximate rate as: (Done / (Done + 2)) * 100 to simulate "busy-ness" or just map count to a 0-100 scale?
-            // Better: Let's imply "Efficiency" based on count. 1 task = 20%? Cap at 100?
-            // Or if we query ALL tasks due that day... schema has dueDate.
-            // Let's try to find tasks created or due on that day.
+            const highCount = tasksDoneOnDay.filter((t: any) => t.priority === "HIGH").length;
+            const mediumCount = tasksDoneOnDay.filter((t: any) => t.priority === "MEDIUM").length;
 
             const count = tasksDoneOnDay.length;
             const rate = Math.min(count * 20, 100); // Mock efficiency: 5 tasks = 100%
@@ -83,23 +74,56 @@ export async function GET(req: Request) {
             return {
                 name: dayStr,
                 rate: rate,
-                high: highCount, // These are raw counts used in lines
+                high: highCount,
                 medium: mediumCount
             };
         });
 
-        // 3. Budget Data
-        const incomes = await prisma.income.findMany({
-            where: { userId, date: { gte: subDays(today, 7) } }
+        // 3. Budget Data (with range support)
+        const { searchParams } = new URL(req.url);
+        const range = searchParams.get("range") || "week"; // week, month, year
+
+        let startDate;
+        let dateFormatStr = "EEE";
+        let segmentCount = 7;
+
+        if (range === "day") {
+            startDate = startOfDay(today);
+            segmentCount = 24; // Hours
+            dateFormatStr = "HH:00";
+        } else if (range === "month") {
+            startDate = subDays(today, 30);
+            segmentCount = 30;
+            dateFormatStr = "MMM d";
+        } else {
+            // default to week
+            startDate = subDays(today, 7);
+            segmentCount = 7;
+            dateFormatStr = "EEE";
+        }
+
+        const rangeIncomes = await prisma.income.findMany({
+            where: { userId, date: { gte: startDate } }
         });
-        const expenses = await prisma.expense.findMany({
-            where: { userId, date: { gte: subDays(today, 7) } }
+        const rangeExpenses = await prisma.expense.findMany({
+            where: { userId, date: { gte: startDate } }
         });
 
-        const budgetData = last7Days.map(day => {
-            const dayStr = format(day, "EEE");
-            const inc = incomes.filter(i => isSameDay(new Date(i.date), day)).reduce((sum, i) => sum + i.amount, 0);
-            const exp = expenses.filter(e => isSameDay(new Date(e.date), day)).reduce((sum, e) => sum + e.amount, 0);
+        const budgetData = Array.from({ length: segmentCount }).map((_, i) => {
+            let unitDate: Date;
+            let filterFn: (d: Date) => boolean;
+
+            if (range === "day") {
+                unitDate = subHours(new Date(), segmentCount - 1 - i);
+                filterFn = (txDate: Date) => isSameDay(txDate, unitDate) && txDate.getHours() === unitDate.getHours();
+            } else {
+                unitDate = subDays(today, segmentCount - 1 - i);
+                filterFn = (txDate: Date) => isSameDay(txDate, unitDate);
+            }
+
+            const dayStr = format(unitDate, dateFormatStr);
+            const inc = rangeIncomes.filter((i: any) => filterFn(new Date(i.date))).reduce((sum: number, i: any) => sum + i.amount, 0);
+            const exp = rangeExpenses.filter((e: any) => filterFn(new Date(e.date))).reduce((sum: number, e: any) => sum + e.amount, 0);
 
             return {
                 name: dayStr,
@@ -125,9 +149,15 @@ export async function GET(req: Request) {
         });
         const monthlySavings = (monthIncomes._sum.amount || 0) - (monthExpenses._sum.amount || 0);
 
-        const habitCompletionToday = Math.round((allHabits.filter(h =>
-            h.logs.some(l => isSameDay(new Date(l.date), today))
+        const habitCompletionToday = Math.round((allHabits.filter((h: any) =>
+            h.logs.some((l: any) => isSameDay(new Date(l.date), today))
         ).length / (allHabits.length || 1)) * 100);
+
+        const upcomingTasks = await prisma.task.findMany({
+            where: { userId, status: { not: "DONE" } },
+            orderBy: { createdAt: 'desc' },
+            take: 5
+        });
 
         return NextResponse.json({
             habitData,
@@ -137,9 +167,10 @@ export async function GET(req: Request) {
                 habitCompletion: `${habitCompletionToday}%`,
                 pendingTasks: pendingTasksCount,
                 monthlySavings: monthlySavings,
-                focusScore: 85 // Static for now as no FocusSession log logic detailed yet
+                focusScore: 85
             },
-            topHabits: allHabits.slice(0, 3).map(h => ({ name: h.name, key: h.name.toLowerCase().replace(/[^a-z0-9]/g, '') }))
+            topHabits: allHabits.slice(0, 3).map((h: any) => ({ name: h.name, key: h.name.toLowerCase().replace(/[^a-z0-9]/g, '') })),
+            upcomingTasks
         });
 
     } catch (error) {

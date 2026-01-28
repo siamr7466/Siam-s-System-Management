@@ -2,34 +2,25 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth-helper";
 
-export async function GET(req: Request) {
+export async function GET() {
     try {
         const userId = await getSessionUserId();
         if (!userId) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const habits = await prisma.habit.findMany({
+        const categories = await prisma.blogCategory.findMany({
             where: {
-                userId: userId,
-            },
-            include: {
-                logs: {
-                    where: {
-                        date: {
-                            gte: new Date(new Date().setDate(new Date().getDate() - 7)) // Last 7 days for efficiency
-                        }
-                    }
-                }
+                userId: userId
             },
             orderBy: {
-                createdAt: 'desc'
+                name: 'asc'
             }
         });
 
-        return NextResponse.json(habits);
+        return NextResponse.json(categories);
     } catch (error) {
-        console.error("[HABITS_GET]", error);
+        console.error("[CATEGORIES_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });
     }
 }
@@ -42,25 +33,26 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { name, description, frequency, color } = body;
+        const { name, color } = body;
 
         if (!name) {
             return new NextResponse("Name is required", { status: 400 });
         }
 
-        const habit = await prisma.habit.create({
+        const category = await prisma.blogCategory.create({
             data: {
-                userId: userId,
+                userId,
                 name,
-                description,
-                frequency: frequency || "DAILY",
-                color: color || "#a855f7", // Default purple
-            },
+                color: color || "#3b82f6"
+            }
         });
 
-        return NextResponse.json(habit);
+        return NextResponse.json(category);
     } catch (error) {
-        console.error("[HABITS_POST]", error);
+        console.error("[CATEGORIES_POST]", error);
+        if ((error as any).code === 'P2002') {
+            return new NextResponse("Category already exists", { status: 400 });
+        }
         return new NextResponse("Internal Error", { status: 500 });
     }
 }

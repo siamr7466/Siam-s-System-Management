@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getSessionUserId } from "@/lib/auth-helper";
 
 export async function DELETE(
     req: Request,
     props: { params: Promise<{ id: string }> }
 ) {
     const params = await props.params;
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    const userId = await getSessionUserId();
+    if (!userId) {
         return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -25,21 +24,21 @@ export async function DELETE(
             await prisma.income.delete({
                 where: {
                     id: params.id,
-                    userId: session.user.id
+                    userId: userId
                 }
             });
         } else if (type === 'saving') {
             await prisma.saving.delete({
                 where: {
                     id: params.id,
-                    userId: session.user.id
+                    userId: userId
                 }
             });
         } else {
             await prisma.expense.delete({
                 where: {
                     id: params.id,
-                    userId: session.user.id
+                    userId: userId
                 }
             });
         }

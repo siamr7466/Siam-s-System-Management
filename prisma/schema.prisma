@@ -27,6 +27,22 @@ model User {
   posts         BlogPost[]
   savings       Saving[]
   reminders     Reminder[]
+  events        Event[]
+  likes         Like[]
+  dislikes      Dislike[]
+  blogCategories BlogCategory[]
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  date        DateTime
+  color       String   @default("#3b82f6")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // Habit System
@@ -143,12 +159,52 @@ model BlogPost {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   content   String   // HTML/JSON from TipTap
+  mood      String?  // Current mood or specialized section
   published Boolean  @default(false)
   tags      String[]
   views     Int      @default(0)
   files     File[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  likes     Like[]
+  dislikes  Dislike[]
+  categoryId String?
+  category   BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+}
+
+model BlogCategory {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String?  @default("#3b82f6")
+  posts     BlogPost[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+model Dislike {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
 }
 
 // Reminder System

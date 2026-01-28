@@ -4,7 +4,6 @@ import * as React from "react";
 import {
     User,
     Bell,
-    Lock,
     Eye,
     Globe,
     Moon,
@@ -13,6 +12,8 @@ import {
     Mail,
     Smartphone
 } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,20 +32,23 @@ import {
 } from "@/components/ui/tabs";
 
 export default function SettingsPage() {
+    const { data: session } = useSession();
+    const user = session?.user;
+    const userName = user?.name || "Siam Rahman";
+    const userEmail = user?.email || "siamrahman7466@gmail.com";
+    const userInitials = userName.split(" ").map(n => n[0]).join("").toUpperCase();
+
     return (
         <div className="flex flex-col gap-y-8 py-8">
-            <div>
-                <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
-                <p className="text-muted-foreground">Manage your account preferences and system configuration.</p>
+            <div className="px-4 md:px-0">
+                <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Settings</h2>
+                <p className="text-muted-foreground text-sm">Manage your account preferences and system configuration.</p>
             </div>
 
-            <Tabs defaultValue="profile" className="w-full">
-                <TabsList className="bg-zinc-100 dark:bg-zinc-900 mb-8 w-fit">
+            <Tabs defaultValue="profile" className="w-full px-4 md:px-0">
+                <TabsList className="bg-zinc-100 dark:bg-zinc-900 mb-8 w-full md:w-fit overflow-x-auto justify-start h-auto p-1">
                     <TabsTrigger value="profile" className="gap-2">
                         <User className="h-4 w-4" /> Profile
-                    </TabsTrigger>
-                    <TabsTrigger value="security" className="gap-2">
-                        <Lock className="h-4 w-4" /> Security
                     </TabsTrigger>
                     <TabsTrigger value="notifications" className="gap-2">
                         <Bell className="h-4 w-4" /> Notifications
@@ -62,11 +66,11 @@ export default function SettingsPage() {
                                 <CardDescription>How others see you in the system.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
-                                <div className="flex items-center gap-6">
+                                <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
                                     <div className="relative group">
                                         <Avatar className="h-24 w-24 ring-2 ring-zinc-100 dark:ring-zinc-800">
-                                            <AvatarImage src="" />
-                                            <AvatarFallback className="text-2xl font-bold bg-zinc-100 dark:bg-zinc-800">SR</AvatarFallback>
+                                            <AvatarImage src={user?.image || ""} />
+                                            <AvatarFallback className="text-2xl font-bold bg-zinc-100 dark:bg-zinc-800">{userInitials}</AvatarFallback>
                                         </Avatar>
                                         <button className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                                             <Camera className="h-6 w-6" />
@@ -75,7 +79,7 @@ export default function SettingsPage() {
                                     <div className="space-y-1">
                                         <p className="text-sm font-medium">Profile Picture</p>
                                         <p className="text-xs text-muted-foreground">JPG, GIF or PNG. 1MB Max.</p>
-                                        <div className="flex gap-2 mt-2">
+                                        <div className="flex justify-center sm:justify-start gap-2 mt-2">
                                             <Button variant="outline" size="sm">Update</Button>
                                             <Button variant="ghost" size="sm" className="text-rose-500">Remove</Button>
                                         </div>
@@ -85,11 +89,11 @@ export default function SettingsPage() {
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div className="space-y-2">
                                         <Label htmlFor="name">Full Name</Label>
-                                        <Input id="name" defaultValue="Siam Rahman" className="bg-zinc-50 dark:bg-zinc-900/50" />
+                                        <Input id="name" defaultValue={userName} className="bg-zinc-50 dark:bg-zinc-900/50" />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="email">Email Address</Label>
-                                        <Input id="email" defaultValue="siamrahman7466@gmail.com" className="bg-zinc-50 dark:bg-zinc-900/50" />
+                                        <Input id="email" defaultValue={userEmail} className="bg-zinc-50 dark:bg-zinc-900/50" />
                                     </div>
                                     <div className="space-y-2 md:col-span-2">
                                         <Label htmlFor="bio">Bio</Label>
@@ -101,8 +105,11 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex justify-end pt-4">
-                                    <Button className="bg-black text-white dark:bg-white dark:text-black">
+                                <div className="flex justify-start sm:justify-end pt-4">
+                                    <Button
+                                        onClick={() => toast.success("Profile changes saved successfully!")}
+                                        className="w-full sm:w-auto bg-black text-white dark:bg-white dark:text-black"
+                                    >
                                         <Save className="mr-2 h-4 w-4" /> Save Changes
                                     </Button>
                                 </div>
@@ -139,29 +146,6 @@ export default function SettingsPage() {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="security">
-                    <Card className="border-none shadow-md bg-white dark:bg-zinc-900/50">
-                        <CardHeader>
-                            <CardTitle>Change Password</CardTitle>
-                            <CardDescription>Ensure your account remains secure.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4 max-w-md">
-                            <div className="space-y-2">
-                                <Label htmlFor="current">Current Password</Label>
-                                <Input id="current" type="password" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="new">New Password</Label>
-                                <Input id="new" type="password" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="confirm">Confirm New Password</Label>
-                                <Input id="confirm" type="password" />
-                            </div>
-                            <Button className="mt-4 bg-black text-white dark:bg-white dark:text-black">Update Password</Button>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
 
                 <TabsContent value="notifications">
                     <Card className="border-none shadow-md bg-white dark:bg-zinc-900/50">
@@ -185,7 +169,10 @@ export default function SettingsPage() {
                                             <p className="text-xs text-muted-foreground">{pref.desc}</p>
                                         </div>
                                     </div>
-                                    <div className="w-10 h-6 bg-emerald-500 rounded-full relative">
+                                    <div
+                                        onClick={() => toast.success("Notification setting updated!")}
+                                        className="w-10 h-6 bg-emerald-500 rounded-full relative cursor-pointer"
+                                    >
                                         <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full" />
                                     </div>
                                 </div>
@@ -194,6 +181,6 @@ export default function SettingsPage() {
                     </Card>
                 </TabsContent>
             </Tabs>
-        </div>
+        </div >
     );
 }

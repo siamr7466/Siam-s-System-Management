@@ -29,6 +29,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 interface HabitLog {
     id: string;
@@ -67,6 +68,11 @@ export default function HabitsPage() {
     const [newHabitDesc, setNewHabitDesc] = React.useState("");
     const [newHabitFreq, setNewHabitFreq] = React.useState("DAILY");
     const [newHabitColor, setNewHabitColor] = React.useState("#8b5cf6");
+
+    // Delete Confirmation State
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+    const [habitToDelete, setHabitToDelete] = React.useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = React.useState(false);
 
     // Calculate days for the CURRENT WEEK starting on Saturday
     const days = React.useMemo(() => {
@@ -163,13 +169,23 @@ export default function HabitsPage() {
     };
 
     const handleDelete = async (habitId: string) => {
-        if (!confirm("Are you sure you want to delete this habit?")) return;
+        setHabitToDelete(habitId);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!habitToDelete) return;
+        setIsDeleting(true);
         try {
-            await fetch(`/api/habits/${habitId}`, { method: "DELETE" });
+            await fetch(`/api/habits/${habitToDelete}`, { method: "DELETE" });
             toast.success("Habit deleted");
-            setHabits(habits.filter(h => h.id !== habitId));
+            setHabits(habits.filter(h => h.id !== habitToDelete));
+            setIsDeleteDialogOpen(false);
+            setHabitToDelete(null);
         } catch (error) {
             toast.error("Could not delete habit");
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -199,12 +215,16 @@ export default function HabitsPage() {
 
     // Animation Variants
     const containerVariants = {
-        hidden: { opacity: 0 },
+        hidden: { opacity: 0, y: 20 },
         show: {
             opacity: 1,
+            y: 0,
             transition: {
-                staggerChildren: 0.1
-            }
+                staggerChildren: 0.1,
+                delayChildren: 0.3,
+                type: "spring",
+                stiffness: 100
+            } as any
         }
     };
 
@@ -221,14 +241,14 @@ export default function HabitsPage() {
             className="flex flex-col gap-8 py-8 h-full overflow-hidden"
         >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <motion.div variants={itemVariants}>
-                    <h2 className="text-3xl font-bold tracking-tight">Daily Routines</h2>
-                    <p className="text-muted-foreground">"Your habits shape who you are."</p>
+                <motion.div variants={itemVariants} className="px-4 md:px-0">
+                    <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Daily Routines</h2>
+                    <p className="text-muted-foreground text-sm">"Your habits shape who you are."</p>
                 </motion.div>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <motion.div variants={itemVariants} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button className="bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/20 rounded-full px-6 transition-all duration-300">
+                        <motion.div variants={itemVariants} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="px-4 md:px-0">
+                            <Button className="w-full md:w-auto bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/20 rounded-full px-6 transition-all duration-300">
                                 <Plus className="mr-2 h-4 w-4" /> New Habit
                             </Button>
                         </motion.div>
@@ -295,7 +315,7 @@ export default function HabitsPage() {
             </div>
 
             {/* Main Content Grid: 3 Columns on Large Screens */}
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 flex-1 overflow-hidden min-h-0">
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 flex-1 overflow-hidden min-h-0 px-4 md:px-0">
 
                 {/* Column 1: Overall Progress & Stats */}
                 <motion.div variants={itemVariants} className="flex flex-col gap-6">
@@ -386,7 +406,7 @@ export default function HabitsPage() {
                             <CardTitle>Consistency</CardTitle>
                             <CardDescription>This Week (Sat - Fri)</CardDescription>
                         </CardHeader>
-                        <CardContent className="overflow-y-auto flex-1 pr-1">
+                        <CardContent className="overflow-x-auto overflow-y-auto flex-1 pr-1 custom-scrollbar">
                             <div className="min-w-[300px] space-y-4">
                                 {/* Header */}
                                 <div className="flex items-end justify-between mb-2 pb-2 border-b dark:border-zinc-800 gap-2">
@@ -489,26 +509,42 @@ export default function HabitsPage() {
                                                         <p className="text-xs text-muted-foreground truncate">{habit.description || "Daily"}</p>
                                                     </div>
                                                 </div>
-                                                <motion.button
-                                                    whileTap={{ scale: 0.8 }}
-                                                    onClick={() => handleToggle(habit.id, new Date())}
-                                                    className={cn(
-                                                        "h-8 w-8 shrink-0 rounded-full border-2 flex items-center justify-center transition-all duration-300",
-                                                        isCompleted ? "border-transparent text-white shadow-lg" : "border-zinc-300 dark:border-zinc-600 text-transparent hover:border-violet-500"
-                                                    )}
-                                                    style={{
-                                                        backgroundColor: isCompleted ? habit.color : "transparent",
-                                                        boxShadow: isCompleted ? `0 0 10px ${habit.color}80` : "none"
-                                                    }}
-                                                >
-                                                    <motion.div
-                                                        initial={{ scale: 0 }}
-                                                        animate={{ scale: isCompleted ? 1 : 0 }}
-                                                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDelete(habit.id);
+                                                        }}
                                                     >
-                                                        <Check className="h-4 w-4" strokeWidth={4} />
-                                                    </motion.div>
-                                                </motion.button>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                    <motion.button
+                                                        whileTap={{ scale: 0.8 }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleToggle(habit.id, new Date());
+                                                        }}
+                                                        className={cn(
+                                                            "h-8 w-8 shrink-0 rounded-full border-2 flex items-center justify-center transition-all duration-300",
+                                                            isCompleted ? "border-transparent text-white shadow-lg" : "border-zinc-300 dark:border-zinc-600 text-transparent hover:border-violet-500"
+                                                        )}
+                                                        style={{
+                                                            backgroundColor: isCompleted ? habit.color : "transparent",
+                                                            boxShadow: isCompleted ? `0 0 10px ${habit.color}80` : "none"
+                                                        }}
+                                                    >
+                                                        <motion.div
+                                                            initial={{ scale: 0 }}
+                                                            animate={{ scale: isCompleted ? 1 : 0 }}
+                                                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                                        >
+                                                            <Check className="h-4 w-4" strokeWidth={4} />
+                                                        </motion.div>
+                                                    </motion.button>
+                                                </div>
                                             </motion.div>
                                         );
                                     })}
@@ -518,6 +554,15 @@ export default function HabitsPage() {
                     </Card>
                 </motion.div>
             </div>
+
+            <ConfirmDialog
+                isOpen={isDeleteDialogOpen}
+                onClose={() => setIsDeleteDialogOpen(false)}
+                onConfirm={confirmDelete}
+                isLoading={isDeleting}
+                title="Delete Habit"
+                description="Are you sure you want to delete this habit? All progress will be lost."
+            />
         </motion.div>
     );
 }

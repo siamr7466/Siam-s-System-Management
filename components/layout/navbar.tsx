@@ -1,8 +1,8 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
 import { Menu, Moon, Sun, Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useSession } from "next-auth/react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -20,8 +20,13 @@ export default function Navbar() {
     const { data: session } = useSession();
     const { setTheme } = useTheme();
 
+    const user = session?.user;
+    const userName = user?.name || "Siam Rahman";
+    const userEmail = user?.email || "siamrahman7466@gmail.com";
+    const userInitials = userName.split(" ").map(n => n[0]).join("").toUpperCase();
+
     return (
-        <div className="flex items-center p-4">
+        <div className="flex items-center p-4 md:px-8">
             <Sheet>
                 <SheetTrigger asChild>
                     <Button variant="ghost" size="icon" className="md:hidden">
@@ -34,7 +39,7 @@ export default function Navbar() {
                 </SheetContent>
             </Sheet>
 
-            <div className="flex w-full justify-end gap-x-4">
+            <div className="flex w-full justify-end gap-x-2 md:gap-x-4">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="icon">
@@ -60,23 +65,23 @@ export default function Navbar() {
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                             <Avatar className="h-8 w-8">
-                                <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || ""} />
-                                <AvatarFallback>{session?.user?.name?.[0]?.toUpperCase() || "U"}</AvatarFallback>
+                                <AvatarImage src={user?.image || ""} alt={userName} />
+                                <AvatarFallback>{userInitials}</AvatarFallback>
                             </Avatar>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56" align="end" forceMount>
                         <DropdownMenuLabel className="font-normal">
                             <div className="flex flex-col space-y-1">
-                                <p className="text-sm font-medium leading-none">{session?.user?.name}</p>
+                                <p className="text-sm font-medium leading-none">{userName}</p>
                                 <p className="text-xs leading-none text-muted-foreground">
-                                    {session?.user?.email}
+                                    {userEmail}
                                 </p>
                             </div>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => signOut()}>
-                            Log out
+                        <DropdownMenuItem>
+                            Settings
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

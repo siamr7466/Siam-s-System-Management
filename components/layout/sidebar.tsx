@@ -9,7 +9,6 @@ import {
     ListTodo,
     Wallet,
     CalendarDays,
-    FolderOpen,
     BookOpen,
     Settings,
     LogOut,
@@ -47,12 +46,6 @@ const routes = [
         icon: CalendarDays,
         href: "/calendar",
         color: "text-emerald-500",
-    },
-    {
-        label: "Files",
-        icon: FolderOpen,
-        href: "/files",
-        color: "text-blue-700",
     },
     {
         label: "Blog",

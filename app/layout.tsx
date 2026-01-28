@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 import { Toaster } from "@/components/ui/sonner";
-import AuthProvider from "@/components/providers/auth-provider";
+
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import AuthProvider from "@/components/providers/auth-provider";
 
 export const metadata: Metadata = {
   title: "Siam's Productivity",

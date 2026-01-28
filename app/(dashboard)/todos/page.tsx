@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 interface Task {
     id: string;
@@ -51,6 +52,8 @@ export default function TodosPage() {
     const [tasks, setTasks] = React.useState<Task[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+    const [taskToEdit, setTaskToEdit] = React.useState<Task | null>(null);
     const [isMounted, setIsMounted] = React.useState(false);
 
     React.useEffect(() => {
@@ -63,6 +66,24 @@ export default function TodosPage() {
     const [newTaskDesc, setNewTaskDesc] = React.useState("");
     const [newTaskPriority, setNewTaskPriority] = React.useState("MEDIUM");
     const [newTaskDueDate, setNewTaskDueDate] = React.useState("");
+    const [newTaskTags, setNewTaskTags] = React.useState("");
+    const [searchQuery, setSearchQuery] = React.useState("");
+
+    // Delete Confirmation State
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+    const [taskToDelete, setTaskToDelete] = React.useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = React.useState(false);
+
+    // Edit State Sync
+    React.useEffect(() => {
+        if (taskToEdit) {
+            setNewTaskTitle(taskToEdit.title);
+            setNewTaskDesc(taskToEdit.description || "");
+            setNewTaskPriority(taskToEdit.priority);
+            setNewTaskDueDate(taskToEdit.dueDate ? new Date(taskToEdit.dueDate).toISOString().split('T')[0] : "");
+            setNewTaskTags(taskToEdit.tags.join(", "));
+        }
+    }, [taskToEdit]);
 
     const fetchTasks = async () => {
         try {
@@ -90,20 +111,49 @@ export default function TodosPage() {
                     description: newTaskDesc,
                     priority: newTaskPriority,
                     dueDate: newTaskDueDate || undefined,
-                    tags: [] // TODO: Add tag support
+                    tags: newTaskTags.split(",").map(t => t.trim()).filter(t => t !== "")
                 })
             });
             if (!res.ok) throw new Error("Failed to create");
             toast.success("Task created");
             setIsDialogOpen(false);
-            setNewTaskTitle("");
-            setNewTaskDesc("");
-            setNewTaskPriority("MEDIUM");
-            setNewTaskDueDate("");
+            resetForm();
             fetchTasks();
         } catch (error) {
             toast.error("Failed to create task");
         }
+    };
+
+    const handleEditTask = async () => {
+        if (!taskToEdit || !newTaskTitle) return;
+        try {
+            const res = await fetch(`/api/todos/${taskToEdit.id}`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    title: newTaskTitle,
+                    description: newTaskDesc,
+                    priority: newTaskPriority,
+                    dueDate: newTaskDueDate || undefined,
+                    tags: newTaskTags.split(",").map(t => t.trim()).filter(t => t !== "")
+                })
+            });
+            if (!res.ok) throw new Error("Failed to update");
+            toast.success("Task updated");
+            setIsEditDialogOpen(false);
+            setTaskToEdit(null);
+            resetForm();
+            fetchTasks();
+        } catch (error) {
+            toast.error("Failed to update task");
+        }
+    };
+
+    const resetForm = () => {
+        setNewTaskTitle("");
+        setNewTaskDesc("");
+        setNewTaskPriority("MEDIUM");
+        setNewTaskDueDate("");
+        setNewTaskTags("");
     };
 
     const handleUpdateStatus = async (taskId: string, newStatus: string) => {
@@ -124,13 +174,24 @@ export default function TodosPage() {
     };
 
     const handleDelete = async (taskId: string) => {
-        if (!confirm("Delete this task?")) return;
+        setTaskToDelete(taskId);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!taskToDelete) return;
+        setIsDeleting(true);
         try {
-            await fetch(`/api/todos/${taskId}`, { method: "DELETE" });
-            setTasks(tasks.filter(t => t.id !== taskId));
+            const res = await fetch(`/api/todos/${taskToDelete}`, { method: "DELETE" });
+            if (!res.ok) throw new Error("Failed to delete");
+            setTasks(tasks.filter(t => t.id !== taskToDelete));
             toast.success("Task deleted");
+            setIsDeleteDialogOpen(false);
+            setTaskToDelete(null);
         } catch (error) {
             toast.error("Failed to delete task");
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -172,22 +233,34 @@ export default function TodosPage() {
         }
     };
 
+    const filteredTasks = tasks.filter(task => {
+        const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            task.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            task.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+        return matchesSearch;
+    });
+
     if (!isMounted) return null;
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col gap-8 py-8 h-full overflow-hidden"
+            className="flex flex-col gap-8 py-8 h-full overflow-hidden px-4 md:px-0"
         >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Task Board</h2>
-                    <p className="text-muted-foreground">Manage your workflow efficiently.</p>
+                <div className="flex-1 max-w-md relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search tasks or tags..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 bg-white dark:bg-zinc-900 border-none shadow-sm h-11 rounded-xl"
+                    />
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black shadow-lg rounded-full px-6">
+                        <Button className="w-full md:w-auto bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black shadow-lg rounded-full px-6 h-11">
                             <Plus className="mr-2 h-4 w-4" /> New Task
                         </Button>
                     </DialogTrigger>
@@ -204,6 +277,10 @@ export default function TodosPage() {
                             <div className="grid gap-2">
                                 <Label>Description</Label>
                                 <Input placeholder="Additional details..." value={newTaskDesc} onChange={e => setNewTaskDesc(e.target.value)} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Tags (comma separated)</Label>
+                                <Input placeholder="Work, Personal, Urgent..." value={newTaskTags} onChange={e => setNewTaskTags(e.target.value)} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
@@ -232,9 +309,9 @@ export default function TodosPage() {
             </div>
 
             <DragDropContext onDragEnd={onDragEnd}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 overflow-hidden min-h-0">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 overflow-y-auto md:overflow-hidden min-h-0 pb-10 md:pb-0">
                     {columns.map((col) => {
-                        const colTasks = tasks.filter(t => t.status === col.id);
+                        const colTasks = filteredTasks.filter(t => t.status === col.id);
                         return (
                             <Card key={col.id} className="border-none shadow-md bg-white dark:bg-zinc-900/50 flex flex-col h-full overflow-hidden">
                                 <CardHeader className="py-4 border-b dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/10">
@@ -296,6 +373,12 @@ export default function TodosPage() {
                                                                                             {format(new Date(task.dueDate), "MMM d")}
                                                                                         </span>
                                                                                     )}
+                                                                                    {task.tags.map(tag => (
+                                                                                        <span key={tag} className="text-[10px] bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                                                                            <Tag className="h-2 w-2" />
+                                                                                            {tag}
+                                                                                        </span>
+                                                                                    ))}
                                                                                 </div>
                                                                                 <DropdownMenu>
                                                                                     <DropdownMenuTrigger asChild>
@@ -304,6 +387,12 @@ export default function TodosPage() {
                                                                                         </button>
                                                                                     </DropdownMenuTrigger>
                                                                                     <DropdownMenuContent align="end">
+                                                                                        <DropdownMenuItem onClick={() => {
+                                                                                            setTaskToEdit(task);
+                                                                                            setIsEditDialogOpen(true);
+                                                                                        }}>
+                                                                                            <Plus className="mr-2 h-4 w-4 rotate-45" /> Edit
+                                                                                        </DropdownMenuItem>
                                                                                         <DropdownMenuItem onClick={() => handleDelete(task.id)} className="text-rose-500">
                                                                                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                                                                                         </DropdownMenuItem>
@@ -363,6 +452,65 @@ export default function TodosPage() {
                     })}
                 </div>
             </DragDropContext>
+
+            <ConfirmDialog
+                isOpen={isDeleteDialogOpen}
+                onClose={() => setIsDeleteDialogOpen(false)}
+                onConfirm={confirmDelete}
+                isLoading={isDeleting}
+                title="Delete Task"
+                description="Are you sure you want to delete this task? This action cannot be undone."
+            />
+
+            <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+                setIsEditDialogOpen(open);
+                if (!open) {
+                    setTaskToEdit(null);
+                    resetForm();
+                }
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Task</DialogTitle>
+                        <DialogDescription>Modify your task details.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label>Title</Label>
+                            <Input placeholder="Task title" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Description</Label>
+                            <Input placeholder="Additional details..." value={newTaskDesc} onChange={e => setNewTaskDesc(e.target.value)} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Tags (comma separated)</Label>
+                            <Input placeholder="Work, Personal, Urgent..." value={newTaskTags} onChange={e => setNewTaskTags(e.target.value)} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label>Priority</Label>
+                                <Select value={newTaskPriority} onValueChange={setNewTaskPriority}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="LOW">Low</SelectItem>
+                                        <SelectItem value="MEDIUM">Medium</SelectItem>
+                                        <SelectItem value="HIGH">High</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Due Date</Label>
+                                <Input type="date" value={newTaskDueDate} onChange={e => setNewTaskDueDate(e.target.value)} />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleEditTask}>Save Changes</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </motion.div>
     );
 }

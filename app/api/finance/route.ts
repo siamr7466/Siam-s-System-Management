@@ -1,26 +1,25 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getSessionUserId } from "@/lib/auth-helper";
 
 export async function GET() {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    const userId = await getSessionUserId();
+    if (!userId) {
         return new NextResponse("Unauthorized", { status: 401 });
     }
 
     try {
         const [incomes, expenses, savings] = await Promise.all([
             prisma.income.findMany({
-                where: { userId: session.user.id },
+                where: { userId: userId },
                 orderBy: { date: 'desc' }
             }),
             prisma.expense.findMany({
-                where: { userId: session.user.id },
+                where: { userId: userId },
                 orderBy: { date: 'desc' }
             }),
             prisma.saving.findMany({
-                where: { userId: session.user.id },
+                where: { userId: userId },
                 orderBy: { date: 'desc' }
             })
         ]);
@@ -39,8 +38,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    const userId = await getSessionUserId();
+    if (!userId) {
         return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -52,7 +51,7 @@ export async function POST(req: Request) {
         if (type === 'income') {
             result = await prisma.income.create({
                 data: {
-                    userId: session.user.id,
+                    userId: userId,
                     amount: parseFloat(amount),
                     source: category,
                     date: new Date(date),
@@ -62,7 +61,7 @@ export async function POST(req: Request) {
         } else if (type === 'saving') {
             result = await prisma.saving.create({
                 data: {
-                    userId: session.user.id,
+                    userId: userId,
                     amount: parseFloat(amount),
                     purpose: category, // Using category as purpose
                     date: new Date(date)
@@ -71,7 +70,7 @@ export async function POST(req: Request) {
         } else {
             result = await prisma.expense.create({
                 data: {
-                    userId: session.user.id,
+                    userId: userId,
                     amount: parseFloat(amount),
                     category,
                     description,

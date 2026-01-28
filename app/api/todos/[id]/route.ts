@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getSessionUserId } from "@/lib/auth-helper";
 
 export async function PATCH(
     req: Request,
     props: { params: Promise<{ id: string }> }
 ) {
     const params = await props.params;
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    const userId = await getSessionUserId();
+    if (!userId) {
         return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -20,7 +19,7 @@ export async function PATCH(
         const task = await prisma.task.update({
             where: {
                 id: params.id,
-                userId: session.user.id
+                userId: userId
             },
             data: {
                 status,
@@ -44,8 +43,8 @@ export async function DELETE(
     props: { params: Promise<{ id: string }> }
 ) {
     const params = await props.params;
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    const userId = await getSessionUserId();
+    if (!userId) {
         return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -53,7 +52,7 @@ export async function DELETE(
         await prisma.task.delete({
             where: {
                 id: params.id,
-                userId: session.user.id
+                userId: userId
             }
         });
 

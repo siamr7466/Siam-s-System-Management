@@ -39,6 +39,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 interface Transaction {
     id: string;
@@ -61,6 +62,11 @@ export default function BudgetPage() {
     const [category, setCategory] = React.useState("");
     const [description, setDescription] = React.useState("");
     const [date, setDate] = React.useState(new Date().toISOString().split('T')[0]);
+
+    // Delete Confirmation State
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+    const [transactionToDelete, setTransactionToDelete] = React.useState<{ id: string, type: string } | null>(null);
+    const [isDeleting, setIsDeleting] = React.useState(false);
 
     const fetchData = async () => {
         try {
@@ -111,15 +117,25 @@ export default function BudgetPage() {
     };
 
     const handleDelete = async (id: string, type: string) => {
-        if (!confirm("Delete this transaction?")) return;
+        setTransactionToDelete({ id, type });
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!transactionToDelete) return;
+        setIsDeleting(true);
         try {
-            const res = await fetch(`/api/finance/${id}?type=${type}`, { method: "DELETE" });
+            const res = await fetch(`/api/finance/${transactionToDelete.id}?type=${transactionToDelete.type}`, { method: "DELETE" });
             if (!res.ok) throw new Error("Failed");
 
-            setTransactions(prev => prev.filter(t => t.id !== id));
+            setTransactions(prev => prev.filter(t => t.id !== transactionToDelete.id));
             toast.success("Transaction deleted");
+            setIsDeleteDialogOpen(false);
+            setTransactionToDelete(null);
         } catch (error) {
             toast.error("Failed to delete");
+        } finally {
+            setIsDeleting(true);
         }
     };
 
@@ -209,6 +225,22 @@ export default function BudgetPage() {
         finalTrendData.push({ date: format(new Date(), "MMM d"), income: 0, expense: 0, savings: 0, balance: 0 });
     }
 
+    // Daily Deltas for "Live Graph"
+    const dailyData = sortedDailyKeys.map(key => {
+        const day = dailyDeltas[key];
+        return {
+            date: format(new Date(day.dateStr), "MMM d"),
+            income: day.income,
+            expense: day.expense,
+            savings: day.savings,
+            net: day.income - day.expense
+        };
+    });
+
+    if (dailyData.length === 0) {
+        dailyData.push({ date: format(new Date(), "MMM d"), income: 0, expense: 0, savings: 0, net: 0 });
+    }
+
     // Chart Data: Expenses by Category
     const expensesByCategory = transactions
         .filter(t => t.type === 'expense')
@@ -217,23 +249,27 @@ export default function BudgetPage() {
             return acc;
         }, {} as Record<string, number>);
 
-    const chartData = Object.entries(expensesByCategory).map(([name, amount]) => ({
+    const categoryData = Object.entries(expensesByCategory).map(([name, value]) => ({
         name,
-        amount,
-        type: 'expense'
-    }));
+        value,
+        percentage: totalIncome > 0 ? (value / totalIncome) * 100 : 0
+    })).sort((a, b) => b.value - a.value);
 
     return (
         <div className="flex flex-col gap-y-8 py-8 px-2 md:px-0">
-            <div className="flex items-center justify-between">
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col md:flex-row md:items-center justify-between gap-4"
+            >
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Financial Overview</h2>
-                    <p className="text-muted-foreground">Monitor your wealth, expenses, and savings.</p>
+                    <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Financial Overview</h2>
+                    <p className="text-muted-foreground text-sm">Monitor your wealth, expenses, and savings in real-time.</p>
                 </div>
                 <div className="flex gap-2">
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black">
+                            <Button className="w-full md:w-auto bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black">
                                 <Plus className="mr-2 h-4 w-4" /> Add Transaction
                             </Button>
                         </DialogTrigger>
@@ -288,87 +324,102 @@ export default function BudgetPage() {
                         </DialogContent>
                     </Dialog>
                 </div>
+            </motion.div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.1 }}
+                    whileHover={{ scale: 1.02 }}
+                >
+                    <Card className="border-none shadow-md bg-white dark:bg-zinc-900/50 hover:shadow-lg transition-shadow">
+                        <CardContent className="p-6">
+                            <div className="flex items-center justify-between space-y-0 pb-2">
+                                <p className="text-sm font-medium text-muted-foreground flex items-center">
+                                    <Wallet className="h-4 w-4 mr-2" /> Current Balance
+                                </p>
+                            </div>
+                            <div className="text-3xl font-bold">
+                                ৳{totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 }}
+                    whileHover={{ scale: 1.02 }}
+                >
+                    <Card className="border-none shadow-md bg-emerald-50 dark:bg-emerald-900/20 hover:shadow-lg transition-shadow">
+                        <CardContent className="p-6 text-emerald-700 dark:text-emerald-400">
+                            <div className="flex items-center justify-between space-y-0 pb-2">
+                                <p className="text-sm font-medium flex items-center">
+                                    <ArrowUpCircle className="h-4 w-4 mr-2" /> Total Income
+                                </p>
+                            </div>
+                            <div className="text-3xl font-bold">
+                                ৳{totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3 }}
+                    whileHover={{ scale: 1.02 }}
+                >
+                    <Card className="border-none shadow-md bg-rose-50 dark:bg-rose-900/20 hover:shadow-lg transition-shadow">
+                        <CardContent className="p-6 text-rose-700 dark:text-rose-400">
+                            <div className="flex items-center justify-between space-y-0 pb-2">
+                                <p className="text-sm font-medium flex items-center">
+                                    <ArrowDownCircle className="h-4 w-4 mr-2" /> Total Expenses
+                                </p>
+                            </div>
+                            <div className="text-3xl font-bold">
+                                ৳{totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.4 }}
+                    whileHover={{ scale: 1.02 }}
+                >
+                    <Card className="border-none shadow-md bg-violet-50 dark:bg-violet-900/20 hover:shadow-lg transition-shadow">
+                        <CardContent className="p-6 text-violet-700 dark:text-violet-400">
+                            <div className="flex items-center justify-between space-y-0 pb-2">
+                                <p className="text-sm font-medium flex items-center">
+                                    <PiggyBank className="h-4 w-4 mr-2" /> Total Savings
+                                </p>
+                            </div>
+                            <div className="text-3xl font-bold">
+                                ৳{totalSavings.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card className="border-none shadow-md bg-white dark:bg-zinc-900/50">
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between space-y-0 pb-2">
-                            <p className="text-sm font-medium text-muted-foreground flex items-center">
-                                <Wallet className="h-4 w-4 mr-2" /> Current Balance
-                            </p>
-                        </div>
-                        <div className="text-3xl font-bold">
-                            ৳{totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-none shadow-md bg-emerald-50 dark:bg-emerald-900/20">
-                    <CardContent className="p-6 text-emerald-700 dark:text-emerald-400">
-                        <div className="flex items-center justify-between space-y-0 pb-2">
-                            <p className="text-sm font-medium flex items-center">
-                                <ArrowUpCircle className="h-4 w-4 mr-2" /> Total Income
-                            </p>
-                        </div>
-                        <div className="text-3xl font-bold">
-                            ৳{totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-none shadow-md bg-rose-50 dark:bg-rose-900/20">
-                    <CardContent className="p-6 text-rose-700 dark:text-rose-400">
-                        <div className="flex items-center justify-between space-y-0 pb-2">
-                            <p className="text-sm font-medium flex items-center">
-                                <ArrowDownCircle className="h-4 w-4 mr-2" /> Total Expenses
-                            </p>
-                        </div>
-                        <div className="text-3xl font-bold">
-                            ৳{totalExpense.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-none shadow-md bg-violet-50 dark:bg-violet-900/20">
-                    <CardContent className="p-6 text-violet-700 dark:text-violet-400">
-                        <div className="flex items-center justify-between space-y-0 pb-2">
-                            <p className="text-sm font-medium flex items-center">
-                                <PiggyBank className="h-4 w-4 mr-2" /> Total Savings
-                            </p>
-                        </div>
-                        <div className="text-3xl font-bold">
-                            ৳{totalSavings.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-4 border-none shadow-md bg-white dark:bg-zinc-900/50">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="grid gap-4 lg:grid-cols-7"
+            >
+                <Card className="lg:col-span-4 border-none shadow-md bg-white dark:bg-zinc-900/50">
                     <CardHeader>
-                        <CardTitle>Financial Trends</CardTitle>
-                        <CardDescription>Cumulative Growth of Income, Expenses, Savings, and Balance.</CardDescription>
+                        <CardTitle>Daily Financial Track</CardTitle>
+                        <CardDescription>Daily breakdown of income and expenditures.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="h-[300px] w-full mt-4">
+                        <div className="h-[350px] w-full mt-4">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={finalTrendData}>
-                                    <defs>
-                                        <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.6} />
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
-                                        </linearGradient>
-                                        <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.6} />
-                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
-                                        </linearGradient>
-                                        <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.6} />
-                                            <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.1} />
-                                        </linearGradient>
-                                        <linearGradient id="colorSavings" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.6} />
-                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1} />
-                                        </linearGradient>
-                                    </defs>
+                                <BarChart data={dailyData}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E4E4E7" />
                                     <XAxis
                                         dataKey="date"
@@ -376,73 +427,95 @@ export default function BudgetPage() {
                                         tickLine={false}
                                         fontSize={12}
                                         stroke="#888"
-                                        tickMargin={10}
                                     />
                                     <YAxis
                                         axisLine={false}
                                         tickLine={false}
                                         fontSize={12}
                                         stroke="#888"
-                                        tickFormatter={(value) => {
-                                            if (value >= 1000000) return `৳${(value / 1000000).toFixed(1)}M`;
-                                            if (value >= 1000) return `৳${(value / 1000).toFixed(0)}K`;
-                                            return `৳${value}`;
-                                        }}
-                                        width={60}
+                                        tickFormatter={(value) => `৳${value}`}
                                     />
                                     <Tooltip
-                                        contentStyle={{
-                                            backgroundColor: "#18181b",
-                                            border: "none",
-                                            borderRadius: "8px",
-                                            color: "#fff"
-                                        }}
-                                        itemStyle={{ fontSize: '12px' }}
-                                        formatter={(value: any) => `৳${parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                                        cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                                        contentStyle={{ backgroundColor: "#18181b", border: "none", borderRadius: "8px", color: "#fff" }}
                                     />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="income"
-                                        stroke="#10b981"
-                                        strokeWidth={2}
-                                        fillOpacity={1}
-                                        fill="url(#colorIncome)"
-                                        name="Income"
-                                    />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="expense"
-                                        stroke="#f43f5e"
-                                        strokeWidth={2}
-                                        fillOpacity={1}
-                                        fill="url(#colorExpense)"
-                                        name="Expense"
-                                    />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="savings"
-                                        stroke="#8b5cf6"
-                                        strokeWidth={2}
-                                        fillOpacity={1}
-                                        fill="url(#colorSavings)"
-                                        name="Savings"
-                                    />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="balance"
-                                        stroke="#3b82f6"
-                                        strokeWidth={3}
-                                        fillOpacity={0.5}
-                                        fill="url(#colorBalance)"
-                                        name="Balance"
-                                    />
+                                    <Bar dataKey="income" fill="#10b981" radius={[4, 4, 0, 0]} name="Income" />
+                                    <Bar dataKey="expense" fill="#f43f5e" radius={[4, 4, 0, 0]} name="Expense" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="lg:col-span-3 border-none shadow-md bg-white dark:bg-zinc-900/50">
+                    <CardHeader>
+                        <CardTitle>Spending by Category</CardTitle>
+                        <CardDescription>How much you spend relative to your income.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {categoryData.length === 0 ? (
+                                <p className="text-center text-muted-foreground py-8">No expenses tracked yet.</p>
+                            ) : (
+                                categoryData.map((item) => (
+                                    <div key={item.name} className="space-y-1">
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="font-medium">{item.name}</span>
+                                            <span className="text-muted-foreground">৳{item.value.toLocaleString()} ({item.percentage.toFixed(1)}%)</span>
+                                        </div>
+                                        <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                            <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${Math.min(item.percentage, 100)}%` }}
+                                                className={cn(
+                                                    "h-full rounded-full",
+                                                    item.percentage > 50 ? "bg-rose-500" : item.percentage > 25 ? "bg-amber-500" : "bg-emerald-500"
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            </motion.div>
+
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="grid gap-4 lg:grid-cols-7"
+            >
+                <Card className="lg:col-span-4 border-none shadow-md bg-white dark:bg-zinc-900/50">
+                    <CardHeader>
+                        <CardTitle>Financial Trends</CardTitle>
+                        <CardDescription>Cumulative growth of your net worth over time.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={finalTrendData}>
+                                    <defs>
+                                        <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.6} />
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E4E4E7" />
+                                    <XAxis dataKey="date" axisLine={false} tickLine={false} fontSize={12} stroke="#888" />
+                                    <YAxis axisLine={false} tickLine={false} fontSize={12} stroke="#888" tickFormatter={(v) => `৳${v}`} />
+                                    <Tooltip contentStyle={{ backgroundColor: "#18181b", border: "none", borderRadius: "8px", color: "#fff" }} />
+                                    <Area type="monotone" dataKey="balance" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorBalance)" name="Net Balance" animationDuration={1500} />
+                                    <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={1} fillOpacity={0.1} fill="#10b981" name="Income (Cum.)" animationDuration={1500} />
+                                    <Area type="monotone" dataKey="expense" stroke="#f43f5e" strokeWidth={1} fillOpacity={0.1} fill="#f43f5e" name="Expense (Cum.)" animationDuration={1500} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="col-span-3 border-none shadow-md bg-white dark:bg-zinc-900/50">
+                <Card className="lg:col-span-3 border-none shadow-md bg-white dark:bg-zinc-900/50">
                     <CardHeader>
                         <CardTitle>Recent Transactions</CardTitle>
                         <CardDescription>History of your financial activities.</CardDescription>
@@ -452,10 +525,11 @@ export default function BudgetPage() {
                             {transactions.length === 0 ? (
                                 <p className="text-center text-muted-foreground py-8">No transactions found.</p>
                             ) : (
-                                transactions.map((tx) => (
+                                transactions.map((tx, idx) => (
                                     <motion.div
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: 0.1 * idx }}
                                         key={tx.id}
                                         className="flex items-center group"
                                     >
@@ -473,7 +547,6 @@ export default function BudgetPage() {
                                             <p className="text-sm font-medium truncate">{tx.title || tx.category}</p>
                                             <p className="text-xs text-muted-foreground truncate">
                                                 {format(new Date(tx.date), "MMM d, yyyy")}
-                                                {tx.description && ` • ${tx.description}`}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -500,7 +573,17 @@ export default function BudgetPage() {
                         </div>
                     </CardContent>
                 </Card>
-            </div>
-        </div>
+            </motion.div>
+
+            <ConfirmDialog
+                isOpen={isDeleteDialogOpen}
+                onClose={() => setIsDeleteDialogOpen(false)}
+                onConfirm={confirmDelete}
+                isLoading={isDeleting}
+                title="Delete Transaction"
+                description="Are you sure you want to delete this transaction? This action cannot be undone."
+            />
+        </div >
     );
 }
+
