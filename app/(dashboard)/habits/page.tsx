@@ -226,12 +226,12 @@ export default function HabitsPage() {
                 stiffness: 100
             } as any
         }
-    };
+    } as const;
 
     const itemVariants = {
         hidden: { opacity: 0, y: 20 },
         show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 50 } }
-    };
+    } as const;
 
     return (
         <motion.div

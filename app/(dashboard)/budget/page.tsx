@@ -255,11 +255,30 @@ export default function BudgetPage() {
         percentage: totalIncome > 0 ? (value / totalIncome) * 100 : 0
     })).sort((a, b) => b.value - a.value);
 
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    } as const;
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0 }
+    } as const;
+
     return (
-        <div className="flex flex-col gap-y-8 py-8 px-2 md:px-0">
+        <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="flex flex-col gap-y-8 py-8 px-2 md:px-0"
+        >
             <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
+                variants={itemVariants}
                 className="flex flex-col md:flex-row md:items-center justify-between gap-4"
             >
                 <div>
@@ -437,10 +456,10 @@ export default function BudgetPage() {
                                     />
                                     <Tooltip
                                         cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                                        contentStyle={{ backgroundColor: "#18181b", border: "none", borderRadius: "8px", color: "#fff" }}
+                                        contentStyle={{ backgroundColor: "#18181b", border: "none", borderRadius: "12px", color: "#fff", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}
                                     />
-                                    <Bar dataKey="income" fill="#10b981" radius={[4, 4, 0, 0]} name="Income" />
-                                    <Bar dataKey="expense" fill="#f43f5e" radius={[4, 4, 0, 0]} name="Expense" />
+                                    <Bar dataKey="income" fill="#10b981" radius={[6, 6, 0, 0]} name="Income" />
+                                    <Bar dataKey="expense" fill="#f43f5e" radius={[6, 6, 0, 0]} name="Expense" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -505,7 +524,7 @@ export default function BudgetPage() {
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E4E4E7" />
                                     <XAxis dataKey="date" axisLine={false} tickLine={false} fontSize={12} stroke="#888" />
                                     <YAxis axisLine={false} tickLine={false} fontSize={12} stroke="#888" tickFormatter={(v) => `৳${v}`} />
-                                    <Tooltip contentStyle={{ backgroundColor: "#18181b", border: "none", borderRadius: "8px", color: "#fff" }} />
+                                    <Tooltip contentStyle={{ backgroundColor: "#18181b", border: "none", borderRadius: "12px", color: "#fff", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }} />
                                     <Area type="monotone" dataKey="balance" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorBalance)" name="Net Balance" animationDuration={1500} />
                                     <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={1} fillOpacity={0.1} fill="#10b981" name="Income (Cum.)" animationDuration={1500} />
                                     <Area type="monotone" dataKey="expense" stroke="#f43f5e" strokeWidth={1} fillOpacity={0.1} fill="#f43f5e" name="Expense (Cum.)" animationDuration={1500} />
@@ -583,7 +602,7 @@ export default function BudgetPage() {
                 title="Delete Transaction"
                 description="Are you sure you want to delete this transaction? This action cannot be undone."
             />
-        </div >
+        </motion.div>
     );
 }
 

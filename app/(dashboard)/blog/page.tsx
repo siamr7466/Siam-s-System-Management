@@ -259,12 +259,31 @@ export default function BlogPage() {
         return matchesSearch && matchesCategory;
     });
 
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    } as const;
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0 }
+    } as const;
+
     return (
-        <div className="flex flex-col gap-y-8 py-4 md:py-8 px-4 md:px-0">
+        <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="flex flex-col gap-y-8 py-4 md:py-8 px-4 md:px-0"
+        >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    variants={itemVariants}
                     className="space-y-1"
                 >
                     <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Personal Blog</h2>
@@ -387,7 +406,7 @@ export default function BlogPage() {
                 </div>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
+            <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -420,7 +439,7 @@ export default function BlogPage() {
                         </Button>
                     ))}
                 </div>
-            </div>
+            </motion.div>
 
             {isLoading ? (
                 <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
@@ -450,9 +469,8 @@ export default function BlogPage() {
                         {filteredPosts.map((post) => (
                             <motion.div
                                 key={post.id}
+                                variants={itemVariants}
                                 layout
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.95 }}
                                 transition={{ duration: 0.3 }}
                             >
@@ -607,7 +625,7 @@ export default function BlogPage() {
                                     >
                                         <div className={cn(
                                             "p-2 rounded-full bg-zinc-100 dark:bg-zinc-800 transition-colors group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30",
-                                            (selectedPost.dislikes?.length || 0) > 0 && "bg-blue-100 dark:bg-blue-900/30"
+                                            (selectedPost.dislikes?.length || 0) > 0 && "bg-blue-100 dark:group-hover:bg-blue-900/30"
                                         )}>
                                             <ThumbsDown className={cn("h-5 w-5", (selectedPost.dislikes?.length || 0) > 0 && "fill-blue-400 text-blue-400")} />
                                         </div>
@@ -635,7 +653,6 @@ export default function BlogPage() {
                 title={postToDelete ? "Delete Post" : "Delete Category"}
                 description={postToDelete ? "Are you sure you want to delete this post?" : "Are you sure you want to delete this category?"}
             />
-        </div>
+        </motion.div>
     );
 }
-

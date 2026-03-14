@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Search, Filter, MoreHorizontal, Calendar, Tag, CheckCircle2, Clock, AlertCircle, Trash2, ArrowRight, ArrowLeft } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Calendar, Tag, CheckCircle2, Clock, AlertCircle, Trash2, ArrowRight, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,6 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-    DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import {
     Dialog,
@@ -61,7 +60,6 @@ export default function TodosPage() {
         fetchTasks();
     }, []);
 
-    // New Task State
     const [newTaskTitle, setNewTaskTitle] = React.useState("");
     const [newTaskDesc, setNewTaskDesc] = React.useState("");
     const [newTaskPriority, setNewTaskPriority] = React.useState("MEDIUM");
@@ -69,12 +67,10 @@ export default function TodosPage() {
     const [newTaskTags, setNewTaskTags] = React.useState("");
     const [searchQuery, setSearchQuery] = React.useState("");
 
-    // Delete Confirmation State
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
     const [taskToDelete, setTaskToDelete] = React.useState<string | null>(null);
     const [isDeleting, setIsDeleting] = React.useState(false);
 
-    // Edit State Sync
     React.useEffect(() => {
         if (taskToEdit) {
             setNewTaskTitle(taskToEdit.title);
@@ -97,9 +93,6 @@ export default function TodosPage() {
             setIsLoading(false);
         }
     };
-
-    // ... rest of handlers
-
 
     const handleCreateTask = async () => {
         if (!newTaskTitle) return;
@@ -157,7 +150,6 @@ export default function TodosPage() {
     };
 
     const handleUpdateStatus = async (taskId: string, newStatus: string) => {
-        // Optimistic UI Update
         const oldTasks = [...tasks];
         setTasks(tasks.map(t => t.id === taskId ? { ...t, status: newStatus as any } : t));
 
@@ -168,7 +160,7 @@ export default function TodosPage() {
             });
             if (!res.ok) throw new Error("Failed to update");
         } catch (error) {
-            setTasks(oldTasks); // Revert
+            setTasks(oldTasks);
             toast.error("Failed to update status");
         }
     };
@@ -210,45 +202,56 @@ export default function TodosPage() {
         }
     };
 
-
-
     const onDragEnd = (result: any) => {
         const { destination, source, draggableId } = result;
-
         if (!destination) return;
-        if (
-            destination.droppableId === source.droppableId &&
-            destination.index === source.index
-        ) {
-            return;
-        }
+        if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
         const task = tasks.find(t => t.id === draggableId);
         if (!task) return;
 
         const newStatus = destination.droppableId;
-
         if (newStatus !== task.status) {
             handleUpdateStatus(draggableId, newStatus);
         }
     };
 
     const filteredTasks = tasks.filter(task => {
-        const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            task.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            task.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-        return matchesSearch;
+        const query = searchQuery.toLowerCase();
+        return task.title.toLowerCase().includes(query) ||
+            task.description?.toLowerCase().includes(query) ||
+            task.tags.some(tag => tag.toLowerCase().includes(query));
     });
+
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    } as const;
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+    } as const;
 
     if (!isMounted) return null;
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
             className="flex flex-col gap-8 py-8 h-full overflow-hidden px-4 md:px-0"
         >
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Active Tasks</h2>
+                    <p className="text-muted-foreground text-sm">"Organize your work and life, finally."</p>
+                </div>
                 <div className="flex-1 max-w-md relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -306,7 +309,7 @@ export default function TodosPage() {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </div>
+            </motion.div>
 
             <DragDropContext onDragEnd={onDragEnd}>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 overflow-y-auto md:overflow-hidden min-h-0 pb-10 md:pb-0">
@@ -335,9 +338,9 @@ export default function TodosPage() {
                                         >
                                             <div className="flex flex-col gap-2 min-h-[100px]">
                                                 {colTasks.length === 0 && !snapshot.isDraggingOver && (
-                                                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground opacity-50 border-2 border-dashed rounded-xl border-zinc-200 dark:border-zinc-800 m-2">
+                                                    <motion.div variants={itemVariants} className="flex flex-col items-center justify-center py-8 text-muted-foreground opacity-50 border-2 border-dashed rounded-xl border-zinc-200 dark:border-zinc-800 m-2">
                                                         <p className="text-xs">No tasks</p>
-                                                    </div>
+                                                    </motion.div>
                                                 )}
                                                 {colTasks.map((task, index) => (
                                                     <Draggable key={task.id} draggableId={task.id} index={index}>
@@ -348,7 +351,6 @@ export default function TodosPage() {
                                                                 {...provided.dragHandleProps}
                                                                 style={{
                                                                     ...provided.draggableProps.style,
-                                                                    // Lock scale if needed or add z-index
                                                                 }}
                                                             >
                                                                 <motion.div
@@ -391,10 +393,10 @@ export default function TodosPage() {
                                                                                             setTaskToEdit(task);
                                                                                             setIsEditDialogOpen(true);
                                                                                         }}>
-                                                                                            <Plus className="mr-2 h-4 w-4 rotate-45" /> Edit
+                                                                                            Edit
                                                                                         </DropdownMenuItem>
                                                                                         <DropdownMenuItem onClick={() => handleDelete(task.id)} className="text-rose-500">
-                                                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                                                            Delete
                                                                                         </DropdownMenuItem>
                                                                                     </DropdownMenuContent>
                                                                                 </DropdownMenu>
@@ -410,24 +412,19 @@ export default function TodosPage() {
                                                                                             variant="ghost"
                                                                                             size="icon"
                                                                                             className="h-6 w-6 mr-1"
-                                                                                            title="Move Back"
                                                                                             onClick={() => handleUpdateStatus(task.id, task.status === "DONE" ? "IN_PROGRESS" : "PENDING")}
                                                                                         >
                                                                                             <ArrowLeft className="h-3 w-3" />
                                                                                         </Button>
                                                                                     )}
                                                                                 </div>
-
-                                                                                {/* Visual hint for dragging */}
                                                                                 <div className="w-8 h-1 rounded-full bg-zinc-100 dark:bg-zinc-800" />
-
                                                                                 <div>
                                                                                     {task.status !== "DONE" && (
                                                                                         <Button
                                                                                             variant="ghost"
                                                                                             size="icon"
                                                                                             className="h-6 w-6 hover:bg-sky-100 dark:hover:bg-sky-900/30 hover:text-sky-600"
-                                                                                            title="Advance Stage"
                                                                                             onClick={() => handleUpdateStatus(task.id, task.status === "PENDING" ? "IN_PROGRESS" : "DONE")}
                                                                                         >
                                                                                             <ArrowRight className="h-3 w-3" />
@@ -459,7 +456,7 @@ export default function TodosPage() {
                 onConfirm={confirmDelete}
                 isLoading={isDeleting}
                 title="Delete Task"
-                description="Are you sure you want to delete this task? This action cannot be undone."
+                description="Are you sure you want to delete this task?"
             />
 
             <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
@@ -472,20 +469,15 @@ export default function TodosPage() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Edit Task</DialogTitle>
-                        <DialogDescription>Modify your task details.</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
                             <Label>Title</Label>
-                            <Input placeholder="Task title" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} />
+                            <Input value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} />
                         </div>
                         <div className="grid gap-2">
                             <Label>Description</Label>
-                            <Input placeholder="Additional details..." value={newTaskDesc} onChange={e => setNewTaskDesc(e.target.value)} />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Tags (comma separated)</Label>
-                            <Input placeholder="Work, Personal, Urgent..." value={newTaskTags} onChange={e => setNewTaskTags(e.target.value)} />
+                            <Input value={newTaskDesc} onChange={e => setNewTaskDesc(e.target.value)} />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
@@ -503,6 +495,10 @@ export default function TodosPage() {
                                 <Label>Due Date</Label>
                                 <Input type="date" value={newTaskDueDate} onChange={e => setNewTaskDueDate(e.target.value)} />
                             </div>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Tags</Label>
+                            <Input value={newTaskTags} onChange={e => setNewTaskTags(e.target.value)} />
                         </div>
                     </div>
                     <DialogFooter>

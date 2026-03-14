@@ -129,8 +129,8 @@ const containerVariants = {
 
 const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-};
+    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+} as const;
 
 export default function DashboardPage() {
     const { data: session } = useSession();
@@ -260,7 +260,10 @@ export default function DashboardPage() {
                                         tickFormatter={(value) => `${value}%`}
                                         dx={-15}
                                     />
-                                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#8b5cf6', strokeWidth: 2, strokeDasharray: '6 6', opacity: 0.5 }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: "#18181b", border: "none", borderRadius: "12px", color: "#fff", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}
+                                        itemStyle={{ color: "#a78bfa" }}
+                                    />
                                     <Legend iconType="circle" wrapperStyle={{ paddingTop: '25px', fontSize: '12px', fontWeight: 600 }} />
 
                                     <Area
