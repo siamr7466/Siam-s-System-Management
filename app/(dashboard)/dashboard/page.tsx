@@ -2,6 +2,7 @@
 import { useSession } from "next-auth/react";
 
 import * as React from "react";
+import { motion } from "framer-motion";
 
 import {
     CheckCircle2,
@@ -53,23 +54,24 @@ interface StatCardProps {
 
 function StatCard({ title, value, description, icon: Icon, trend, trendValue, color }: StatCardProps) {
     return (
-        <Card className="overflow-hidden border-none shadow-md bg-white dark:bg-zinc-900/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300 group">
-            <CardContent className="p-6">
+        <Card className="overflow-hidden border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-500 group relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none" />
+            <CardContent className="p-6 relative z-10">
                 <div className="flex items-center justify-between">
-                    <div className={`${color} p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 group-hover:scale-110 transition-transform`}>
+                    <div className={`${color} p-3 rounded-2xl bg-zinc-50/80 dark:bg-zinc-800/80 group-hover:scale-110 group-hover:rotate-3 shadow-sm transition-all duration-500 ease-out`}>
                         <Icon className="h-6 w-6" />
                     </div>
                     {trend && (
-                        <div className={`flex items-center text-xs font-medium ${trend === "up" ? "text-emerald-500" : "text-rose-500"}`}>
-                            {trend === "up" ? <ArrowUpRight className="h-3 w-3 mr-1" /> : <ArrowDownRight className="h-3 w-3 mr-1" />}
+                        <div className={`flex items-center text-xs font-bold px-2 py-1 rounded-full ${trend === "up" ? "text-emerald-600 bg-emerald-100/50 dark:bg-emerald-500/10" : "text-rose-600 bg-rose-100/50 dark:bg-rose-500/10"}`}>
+                            {trend === "up" ? <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" /> : <ArrowDownRight className="h-3.5 w-3.5 mr-0.5" />}
                             {trendValue}
                         </div>
                     )}
                 </div>
-                <div className="mt-4">
-                    <p className="text-sm font-medium text-muted-foreground">{title}</p>
-                    <h3 className="text-2xl font-bold tracking-tight">{value}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">{description}</p>
+                <div className="mt-5">
+                    <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
+                    <h3 className="text-3xl font-extrabold tracking-tight mt-1 text-zinc-900 dark:text-zinc-50">{value}</h3>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2 font-medium">{description}</p>
                 </div>
             </CardContent>
         </Card>
@@ -91,18 +93,18 @@ interface CustomTooltipProps {
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
         return (
-            <div className="bg-zinc-950/90 border border-zinc-800 p-4 rounded-xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
-                <p className="text-zinc-400 text-xs font-semibold mb-3 uppercase tracking-wider">{label} Performance</p>
-                <div className="space-y-2">
+            <div className="bg-white/90 dark:bg-zinc-950/90 border border-zinc-200 dark:border-zinc-800/50 p-4 rounded-2xl shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200">
+                <p className="text-zinc-500 dark:text-zinc-400 text-xs font-bold mb-3 uppercase tracking-wider">{label} Performance</p>
+                <div className="space-y-2.5">
                     {payload.map((entry, index) => (
                         <div key={index} className="flex items-center justify-between gap-8 text-sm group">
-                            <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full ring-2 ring-transparent group-hover:ring-white/20 transition-all" style={{ backgroundColor: entry.stroke || entry.fill }} />
-                                <span className={entry.name === "Overall Score" ? "text-white font-bold" : "text-zinc-300"}>
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-2.5 h-2.5 rounded-full ring-4 ring-transparent group-hover:ring-zinc-200 dark:group-hover:ring-white/10 transition-all shadow-inner" style={{ backgroundColor: entry.stroke || entry.fill }} />
+                                <span className={entry.name === "Overall Score" ? "text-zinc-900 dark:text-white font-extrabold" : "text-zinc-600 dark:text-zinc-300 font-medium"}>
                                     {entry.name}
                                 </span>
                             </div>
-                            <span className={`font-mono font-bold ${entry.name === "Overall Score" ? "text-white" : "text-zinc-400"}`}>
+                            <span className={`font-mono font-bold ${entry.name === "Overall Score" ? "text-zinc-900 dark:text-white" : "text-zinc-500 dark:text-zinc-400"}`}>
                                 {entry.value}%
                             </span>
                         </div>
@@ -112,6 +114,22 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
         );
     }
     return null;
+};
+
+const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1,
+            delayChildren: 0.1
+        }
+    }
+};
+
+const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
 };
 
 export default function DashboardPage() {
@@ -148,31 +166,33 @@ export default function DashboardPage() {
         fetchData();
     }, []);
 
-
-
     return (
-        <div className={cn(
-            "flex flex-col gap-y-8 py-8 animate-in fade-in slide-in-from-bottom-4 duration-700",
-            isLoading && "opacity-50 pointer-events-none"
-        )}>
-            <div className="px-4 md:px-0">
-                <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+        <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className={cn(
+                "flex flex-col gap-y-8 py-8",
+                isLoading && "opacity-50 pointer-events-none transition-opacity duration-500"
+            )}>
+            <motion.div variants={itemVariants} className="px-4 md:px-0">
+                <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-zinc-900 to-zinc-500 dark:from-white dark:to-zinc-400">
                     Welcome back, {firstName}!
                 </h2>
-                <p className="text-muted-foreground text-sm md:text-base">
-                    Here&apos;s what&apos;s happening with your productivity today.
+                <p className="text-zinc-500 dark:text-zinc-400 text-sm md:text-base mt-2 font-medium">
+                    Here's what's happening with your productivity today.
                 </p>
-            </div>
+            </motion.div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 px-4 md:px-0">
+            <motion.div variants={itemVariants} className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 px-4 md:px-0">
                 <StatCard
                     title="Habit Completion"
                     value={stats.habitCompletion || "0%"}
                     description="Today's goal rate"
                     icon={CheckCircle2}
                     trend="up"
-                    trendValue=""
-                    color="text-violet-500"
+                    trendValue="Optimal"
+                    color="text-violet-600 dark:text-violet-400"
                 />
                 <StatCard
                     title="Pending Tasks"
@@ -180,8 +200,8 @@ export default function DashboardPage() {
                     description="Active items"
                     icon={ListTodo}
                     trend="down"
-                    trendValue=""
-                    color="text-pink-500"
+                    trendValue="Clear"
+                    color="text-pink-600 dark:text-pink-400"
                 />
                 <StatCard
                     title="Monthly Savings"
@@ -189,8 +209,8 @@ export default function DashboardPage() {
                     description="Net income this month"
                     icon={TrendingUp}
                     trend="up"
-                    trendValue=""
-                    color="text-emerald-500"
+                    trendValue="Growth"
+                    color="text-emerald-600 dark:text-emerald-400"
                 />
                 <StatCard
                     title="Focus Score"
@@ -198,48 +218,50 @@ export default function DashboardPage() {
                     description="Productivity Index"
                     icon={Zap}
                     trend="up"
-                    trendValue=""
-                    color="text-amber-500"
+                    trendValue="High"
+                    color="text-amber-600 dark:text-amber-400"
                 />
-            </div>
+            </motion.div>
 
-            <div className="grid gap-4 lg:grid-cols-7 px-4 md:px-0">
-                <Card className="col-span-full lg:col-span-4 border-none shadow-md bg-white dark:bg-zinc-900/50">
+            <motion.div variants={itemVariants} className="grid gap-6 lg:grid-cols-7 px-4 md:px-0">
+                <Card className="col-span-full lg:col-span-4 border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl transition-all duration-500">
                     <CardHeader>
-                        <CardTitle>Live Habit Persistence</CardTitle>
-                        <CardDescription>
+                        <CardTitle className="text-xl font-bold">Live Habit Persistence</CardTitle>
+                        <CardDescription className="text-zinc-500 font-medium">
                             Real-time consistency tracking across all disciplines.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="pl-0">
-                        <div className="h-[350px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
+                    <CardContent className="pl-0 pb-6">
+                        <div className="h-[350px] w-full min-h-0 min-w-0">
+                            <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
                                 <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
                                             <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" opacity={0.1} />
+                                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#888" opacity={0.15} />
                                     <XAxis
                                         dataKey="name"
                                         stroke="#888888"
                                         fontSize={12}
+                                        fontWeight={500}
                                         tickLine={false}
                                         axisLine={false}
-                                        dy={10}
+                                        dy={15}
                                     />
                                     <YAxis
                                         stroke="#888888"
                                         fontSize={12}
+                                        fontWeight={500}
                                         tickLine={false}
                                         axisLine={false}
                                         tickFormatter={(value) => `${value}%`}
-                                        dx={-10}
+                                        dx={-15}
                                     />
-                                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#8b5cf6', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#8b5cf6', strokeWidth: 2, strokeDasharray: '6 6', opacity: 0.5 }} />
+                                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '25px', fontSize: '12px', fontWeight: 600 }} />
 
                                     <Area
                                         type="monotone"
@@ -249,8 +271,8 @@ export default function DashboardPage() {
                                         strokeWidth={4}
                                         fillOpacity={1}
                                         fill="url(#colorTotal)"
-                                        animationDuration={1500}
-                                        animationEasing="ease-in-out"
+                                        animationDuration={2000}
+                                        animationEasing="ease-out"
                                     />
                                     {topHabits.map((habit: any, index: number) => (
                                         <Line
@@ -259,11 +281,12 @@ export default function DashboardPage() {
                                             dataKey={habit.key}
                                             name={habit.name}
                                             stroke={["#3b82f6", "#10b981", "#f43f5e"][index % 3]}
-                                            strokeWidth={2}
+                                            strokeWidth={2.5}
                                             dot={false}
-                                            activeDot={{ r: 6, strokeWidth: 0 }}
-                                            strokeOpacity={0.7}
-                                            animationDuration={1500}
+                                            activeDot={{ r: 6, strokeWidth: 0, fill: ["#3b82f6", "#10b981", "#f43f5e"][index % 3] }}
+                                            strokeOpacity={0.9}
+                                            animationDuration={2000}
+                                            animationEasing="ease-out"
                                         />
                                     ))}
                                 </AreaChart>
@@ -272,79 +295,90 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="col-span-full lg:col-span-3 border-none shadow-md bg-white dark:bg-zinc-900/50">
+                <Card className="col-span-full lg:col-span-3 border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl transition-all duration-500 flex flex-col">
                     <CardHeader>
-                        <CardTitle>Upcoming Tasks</CardTitle>
-                        <CardDescription>
+                        <CardTitle className="text-xl font-bold">Upcoming Tasks</CardTitle>
+                        <CardDescription className="text-zinc-500 font-medium">
                             You have {stats.pendingTasks || 0} tasks pending.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex-1">
                         <div className="space-y-4">
-                            {upcomingTasks.slice(0, 5).map((task: any) => (
-                                <div key={task.id} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 transition-all group">
+                            {upcomingTasks.slice(0, 5).map((task: any, idx: number) => (
+                                <motion.div 
+                                    key={task.id} 
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.2 + idx * 0.1, duration: 0.4 }}
+                                    className="flex items-center gap-4 p-4 rounded-2xl bg-zinc-50/80 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800/50 hover:bg-white dark:hover:bg-zinc-800 hover:shadow-md transition-all duration-300 group cursor-pointer"
+                                >
                                     <div className={cn(
-                                        "w-2 h-2 rounded-full",
-                                        task.priority === "HIGH" ? "bg-rose-500" :
-                                            task.priority === "MEDIUM" ? "bg-amber-500" : "bg-emerald-500"
+                                        "w-3 h-3 rounded-full shadow-sm",
+                                        task.priority === "HIGH" ? "bg-rose-500 shadow-rose-500/30" :
+                                            task.priority === "MEDIUM" ? "bg-amber-500 shadow-amber-500/30" : "bg-emerald-500 shadow-emerald-500/30"
                                     )} />
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{task.title}</p>
-                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{task.status.replace('_', ' ')}</p>
+                                        <p className="text-sm font-bold truncate text-zinc-800 dark:text-zinc-200 group-hover:text-primary transition-colors">{task.title}</p>
+                                        <p className="text-[10px] sm:text-xs text-zinc-500 font-medium uppercase tracking-wider mt-0.5">{task.status.replace('_', ' ')}</p>
                                     </div>
-                                    <Badge variant="outline" className="text-[10px] h-5 rounded-full px-2 opacity-50">
+                                    <Badge variant="secondary" className="text-[10px] h-6 rounded-full px-3 font-bold bg-white dark:bg-zinc-900 shadow-sm border-zinc-200 dark:border-zinc-800 group-hover:bg-primary/5 transition-colors">
                                         {task.priority}
                                     </Badge>
-                                </div>
+                                </motion.div>
                             ))}
                             {upcomingTasks.length === 0 && (
-                                <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
-                                    <ListTodo className="h-12 w-12 mb-4 opacity-20" />
-                                    <p className="text-sm">No pending tasks</p>
-                                </div>
+                                <motion.div 
+                                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                    className="flex flex-col items-center justify-center h-full min-h-[250px] text-zinc-400 dark:text-zinc-600"
+                                >
+                                    <div className="bg-zinc-100 dark:bg-zinc-800/50 p-4 rounded-full mb-4 opacity-50">
+                                        <ListTodo className="h-8 w-8" />
+                                    </div>
+                                    <p className="text-sm font-medium">No pending tasks. You're all caught up!</p>
+                                </motion.div>
                             )}
                         </div>
                     </CardContent>
                 </Card>
-            </div>
+            </motion.div>
 
-            <div className="grid gap-4 lg:grid-cols-2 mt-4 px-4 md:px-0">
-                <Card className="border-none shadow-md bg-white dark:bg-zinc-900/50">
+            <motion.div variants={itemVariants} className="grid gap-6 lg:grid-cols-2 mt-2 px-4 md:px-0">
+                <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl transition-all duration-500">
                     <CardHeader>
-                        <CardTitle>Todo Completion Rate</CardTitle>
-                        <CardDescription>
+                        <CardTitle className="text-xl font-bold">Todo Completion Rate</CardTitle>
+                        <CardDescription className="text-zinc-500 font-medium">
                             Weekly task efficiency analysis (0-100%).
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="pl-0">
-                        <div className="h-[300px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
+                    <CardContent className="pl-0 pb-6">
+                        <div className="h-[300px] w-full min-h-0 min-w-0">
+                            <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
                                 <AreaChart data={todoData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorTodo" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#ec4899" stopOpacity={0.3} />
+                                            <stop offset="5%" stopColor="#ec4899" stopOpacity={0.4} />
                                             <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" opacity={0.1} />
-                                    <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} dy={10} />
-                                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`} dx={-10} />
-                                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#ec4899', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                                    <Area type="monotone" dataKey="rate" name="Completion Rate" stroke="#ec4899" strokeWidth={3} fillOpacity={1} fill="url(#colorTodo)" animationDuration={1500} />
-                                    <Line type="monotone" dataKey="high" name="High Priority" stroke="#f43f5e" strokeWidth={2} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} strokeOpacity={0.7} animationDuration={1500} />
-                                    <Line type="monotone" dataKey="medium" name="Medium Priority" stroke="#f59e0b" strokeWidth={2} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} strokeOpacity={0.7} animationDuration={1500} />
+                                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#888" opacity={0.15} />
+                                    <XAxis dataKey="name" stroke="#888888" fontSize={12} fontWeight={500} tickLine={false} axisLine={false} dy={15} />
+                                    <YAxis stroke="#888888" fontSize={12} fontWeight={500} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`} dx={-15} />
+                                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#ec4899', strokeWidth: 2, strokeDasharray: '6 6', opacity: 0.5 }} />
+                                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '25px', fontSize: '12px', fontWeight: 600 }} />
+                                    <Area type="monotone" dataKey="rate" name="Completion Rate" stroke="#ec4899" strokeWidth={4} fillOpacity={1} fill="url(#colorTodo)" animationDuration={2000} animationEasing="ease-out" />
+                                    <Line type="monotone" dataKey="high" name="High Priority" stroke="#f43f5e" strokeWidth={2.5} dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: "#f43f5e" }} strokeOpacity={0.9} animationDuration={2000} animationEasing="ease-out" />
+                                    <Line type="monotone" dataKey="medium" name="Medium Priority" stroke="#f59e0b" strokeWidth={2.5} dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: "#f59e0b" }} strokeOpacity={0.9} animationDuration={2000} animationEasing="ease-out" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-md bg-white dark:bg-zinc-900/50">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle>Budget Analytics</CardTitle>
-                            <CardDescription>
+                <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl transition-all duration-500">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <div className="space-y-1">
+                            <CardTitle className="text-xl font-bold">Budget Analytics</CardTitle>
+                            <CardDescription className="text-zinc-500 font-medium">
                                 Daily income vs expense tracking.
                             </CardDescription>
                         </div>
@@ -356,40 +390,41 @@ export default function DashboardPage() {
                                 setBudgetData(json.budgetData);
                             }}
                         >
-                            <SelectTrigger className="w-[120px] h-8 text-xs">
+                            <SelectTrigger className="w-[120px] h-9 text-xs font-semibold rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 transition-colors">
                                 <SelectValue placeholder="Range" />
                             </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="day">Past 24h</SelectItem>
-                                <SelectItem value="week">Past Week</SelectItem>
-                                <SelectItem value="month">Past Month</SelectItem>
+                            <SelectContent className="rounded-xl font-medium">
+                                <SelectItem value="day" className="rounded-lg">Past 24h</SelectItem>
+                                <SelectItem value="week" className="rounded-lg">Past Week</SelectItem>
+                                <SelectItem value="month" className="rounded-lg">Past Month</SelectItem>
                             </SelectContent>
                         </Select>
                     </CardHeader>
-                    <CardContent className="pl-0">
-                        <div className="h-[300px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
+                    <CardContent className="pl-0 pb-6 pt-4">
+                        <div className="h-[300px] w-full min-h-0 min-w-0">
+                            <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
                                 <AreaChart data={budgetData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorBudget" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
                                             <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" opacity={0.1} />
-                                    <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} dy={10} />
-                                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `৳${value}`} dx={-10} />
-                                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#10b981', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                                    <Area type="monotone" dataKey="saved" name="Net Savings" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorBudget)" animationDuration={1500} />
-                                    <Line type="monotone" dataKey="income" name="Income" stroke="#34d399" strokeWidth={2} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} strokeOpacity={0.7} animationDuration={1500} />
-                                    <Line type="monotone" dataKey="expense" name="Expense" stroke="#f43f5e" strokeWidth={2} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} strokeOpacity={0.7} animationDuration={1500} />
+                                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#888" opacity={0.15} />
+                                    <XAxis dataKey="name" stroke="#888888" fontSize={12} fontWeight={500} tickLine={false} axisLine={false} dy={15} />
+                                    <YAxis stroke="#888888" fontSize={12} fontWeight={500} tickLine={false} axisLine={false} tickFormatter={(value) => `৳${value}`} dx={-15} />
+                                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#10b981', strokeWidth: 2, strokeDasharray: '6 6', opacity: 0.5 }} />
+                                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '25px', fontSize: '12px', fontWeight: 600 }} />
+                                    <Area type="monotone" dataKey="saved" name="Net Savings" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorBudget)" animationDuration={2000} animationEasing="ease-out" />
+                                    <Line type="monotone" dataKey="income" name="Income" stroke="#34d399" strokeWidth={2.5} dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: "#34d399" }} strokeOpacity={0.9} animationDuration={2000} animationEasing="ease-out" />
+                                    <Line type="monotone" dataKey="expense" name="Expense" stroke="#f43f5e" strokeWidth={2.5} dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: "#f43f5e" }} strokeOpacity={0.9} animationDuration={2000} animationEasing="ease-out" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
                     </CardContent>
                 </Card>
-            </div>
-        </div>
+            </motion.div>
+        </motion.div>
     );
 }
+
