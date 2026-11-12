@@ -525,9 +525,9 @@ export default function BudgetPage() {
                                     <XAxis dataKey="date" axisLine={false} tickLine={false} fontSize={12} stroke="#888" />
                                     <YAxis axisLine={false} tickLine={false} fontSize={12} stroke="#888" tickFormatter={(v) => `৳${v}`} />
                                     <Tooltip contentStyle={{ backgroundColor: "#18181b", border: "none", borderRadius: "12px", color: "#fff", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }} />
-                                    <Area type="monotone" dataKey="balance" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorBalance)" name="Net Balance" animationDuration={1500} />
-                                    <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={1} fillOpacity={0.1} fill="#10b981" name="Income (Cum.)" animationDuration={1500} />
-                                    <Area type="monotone" dataKey="expense" stroke="#f43f5e" strokeWidth={1} fillOpacity={0.1} fill="#f43f5e" name="Expense (Cum.)" animationDuration={1500} />
+                                    <Area type="monotone" dataKey="balance" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorBalance)" name="Net Balance" animationDuration={250} />
+                                    <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={1} fillOpacity={0.1} fill="#10b981" name="Income (Cum.)" animationDuration={250} />
+                                    <Area type="monotone" dataKey="expense" stroke="#f43f5e" strokeWidth={1} fillOpacity={0.1} fill="#f43f5e" name="Expense (Cum.)" animationDuration={250} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>

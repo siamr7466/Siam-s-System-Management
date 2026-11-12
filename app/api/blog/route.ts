@@ -25,9 +25,9 @@ export async function GET() {
         });
 
         return NextResponse.json(posts);
-    } catch (error) {
+    } catch (error: any) {
         console.error("[BLOG_GET]", error);
-        return new NextResponse("Internal Error", { status: 500 });
+        return NextResponse.json({ error: error.message || String(error), stack: error.stack }, { status: 500 });
     }
 }
 

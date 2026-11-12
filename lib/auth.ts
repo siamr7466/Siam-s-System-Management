@@ -5,8 +5,8 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
-    adapter: PrismaAdapter(prisma),
-    session: {
+    // adapter: PrismaAdapter(prisma), // Not used with JWT strategy; avoids Prisma v6 CJS collision
+        session: {
         strategy: "jwt",
     },
     pages: {

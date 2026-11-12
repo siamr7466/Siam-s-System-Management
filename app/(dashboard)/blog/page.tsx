@@ -275,20 +275,12 @@ export default function BlogPage() {
     } as const;
 
     return (
-        <motion.div 
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="flex flex-col gap-y-8 py-4 md:py-8 px-4 md:px-0"
-        >
+        <div className="flex flex-col gap-y-8 py-4 md:py-8 px-4 md:px-0">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <motion.div
-                    variants={itemVariants}
-                    className="space-y-1"
-                >
+                <div className="space-y-1">
                     <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Personal Blog</h2>
                     <p className="text-muted-foreground text-sm md:text-base">Documenting the journey and sharing insights.</p>
-                </motion.div>
+                </div>
 
                 <div className="flex flex-col md:flex-row gap-2">
                     <Dialog open={isCategoryModalOpen} onOpenChange={setIsCategoryModalOpen}>
@@ -406,7 +398,7 @@ export default function BlogPage() {
                 </div>
             </div>
 
-            <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
+            <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -439,7 +431,7 @@ export default function BlogPage() {
                         </Button>
                     ))}
                 </div>
-            </motion.div>
+            </div>
 
             {isLoading ? (
                 <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
@@ -465,17 +457,13 @@ export default function BlogPage() {
                 </div>
             ) : (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    <AnimatePresence mode="popLayout">
-                        {filteredPosts.map((post) => (
-                            <motion.div
-                                key={post.id}
-                                variants={itemVariants}
-                                layout
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{ duration: 0.3 }}
-                            >
-                                <Card className="group border-none shadow-md overflow-hidden bg-white dark:bg-zinc-900/50 hover:shadow-xl transition-all h-full flex flex-col border border-zinc-100 dark:border-zinc-800/50">
-                                    <div className="relative p-6 pt-8 bg-zinc-50 dark:bg-zinc-800/30 border-b border-zinc-100 dark:border-zinc-800/50">
+                    {filteredPosts.map((post) => (
+                        <div
+                            key={post.id}
+                            className="transition-all duration-150"
+                        >
+                            <Card className="group shadow-sm overflow-hidden bg-white dark:bg-zinc-900/90 hover:shadow-md transition-all h-full flex flex-col border border-zinc-200 dark:border-zinc-800">
+                                <div className="relative p-6 pt-8 bg-zinc-50 dark:bg-zinc-800/30 border-b border-zinc-100 dark:border-zinc-800/50">
                                         <div className="flex items-center justify-center text-muted-foreground py-4">
                                             <BookOpen className="h-10 w-10 opacity-20" />
                                         </div>
@@ -543,9 +531,8 @@ export default function BlogPage() {
                                         </button>
                                     </CardFooter>
                                 </Card>
-                            </motion.div>
+                            </div>
                         ))}
-                    </AnimatePresence>
                 </div>
             )}
 
@@ -653,6 +640,6 @@ export default function BlogPage() {
                 title={postToDelete ? "Delete Post" : "Delete Category"}
                 description={postToDelete ? "Are you sure you want to delete this post?" : "Are you sure you want to delete this category?"}
             />
-        </motion.div>
+        </div>
     );
 }

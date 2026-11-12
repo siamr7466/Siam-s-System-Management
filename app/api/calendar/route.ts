@@ -22,17 +22,23 @@ export async function GET(req: Request) {
         const startDate = subDays(startOfWeek(startOfMonth(targetDate)), 1);
         const endDate = addDays(endOfWeek(endOfMonth(targetDate)), 1);
 
-        // Fetch custom events
+        // 1. Fetch custom events
         const events = await prisma.event.findMany({
             where: { userId, date: { gte: startDate, lte: endDate } }
         });
 
-        // Fetch todos (tasks) with due dates in range
+        // 2. Fetch todos (tasks) with dueDate in range OR created in range
         const tasks = await prisma.task.findMany({
-            where: { userId, dueDate: { gte: startDate, lte: endDate } }
+            where: {
+                userId,
+                OR: [
+                    { dueDate: { gte: startDate, lte: endDate } },
+                    { dueDate: null, createdAt: { gte: startDate, lte: endDate } }
+                ]
+            }
         });
 
-        // Fetch habit logs in range
+        // 3. Fetch habit logs in range
         const habitLogs = await prisma.habitLog.findMany({
             where: {
                 habit: { userId },
@@ -42,7 +48,7 @@ export async function GET(req: Request) {
             include: { habit: true }
         });
 
-        // Fetch Financial Data
+        // 4. Fetch Financial Data (Income, Expense, Savings)
         const incomes = await prisma.income.findMany({
             where: { userId, date: { gte: startDate, lte: endDate } }
         });
@@ -55,16 +61,26 @@ export async function GET(req: Request) {
             where: { userId, date: { gte: startDate, lte: endDate } }
         });
 
+        // 5. Fetch Blog Posts in range
+        const blogPosts = await prisma.blogPost.findMany({
+            where: {
+                userId,
+                createdAt: { gte: startDate, lte: endDate }
+            },
+            include: { category: true }
+        });
+
         return NextResponse.json({
             events,
             tasks,
             habitLogs,
             incomes,
             expenses,
-            savings
+            savings,
+            blogPosts
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("[CALENDAR_GET] Error:", error);
         return new NextResponse("Internal Error", { status: 500 });
     }

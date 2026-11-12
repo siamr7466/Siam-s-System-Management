@@ -54,24 +54,23 @@ interface StatCardProps {
 
 function StatCard({ title, value, description, icon: Icon, trend, trendValue, color }: StatCardProps) {
     return (
-        <Card className="overflow-hidden border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] bg-white/80 dark:bg-zinc-900/60 backdrop-blur-xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-500 group relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none" />
-            <CardContent className="p-6 relative z-10">
+        <Card className="overflow-hidden border border-zinc-200/80 dark:border-zinc-800 shadow-sm bg-white dark:bg-zinc-900 transition-colors duration-200 group relative">
+            <CardContent className="p-5 relative z-10">
                 <div className="flex items-center justify-between">
-                    <div className={`${color} p-3 rounded-2xl bg-zinc-50/80 dark:bg-zinc-800/80 group-hover:scale-110 group-hover:rotate-3 shadow-sm transition-all duration-500 ease-out`}>
-                        <Icon className="h-6 w-6" />
+                    <div className={`${color} p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 shadow-sm`}>
+                        <Icon className="h-5 w-5" />
                     </div>
                     {trend && (
-                        <div className={`flex items-center text-xs font-bold px-2 py-1 rounded-full ${trend === "up" ? "text-emerald-600 bg-emerald-100/50 dark:bg-emerald-500/10" : "text-rose-600 bg-rose-100/50 dark:bg-rose-500/10"}`}>
+                        <div className={`flex items-center text-xs font-bold px-2 py-0.5 rounded-full ${trend === "up" ? "text-emerald-600 bg-emerald-100/50 dark:bg-emerald-500/10" : "text-rose-600 bg-rose-100/50 dark:bg-rose-500/10"}`}>
                             {trend === "up" ? <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" /> : <ArrowDownRight className="h-3.5 w-3.5 mr-0.5" />}
                             {trendValue}
                         </div>
                     )}
                 </div>
-                <div className="mt-5">
-                    <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
-                    <h3 className="text-3xl font-extrabold tracking-tight mt-1 text-zinc-900 dark:text-zinc-50">{value}</h3>
-                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2 font-medium">{description}</p>
+                <div className="mt-4">
+                    <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">{title}</p>
+                    <h3 className="text-2xl font-bold tracking-tight mt-1 text-zinc-900 dark:text-zinc-50">{value}</h3>
+                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">{description}</p>
                 </div>
             </CardContent>
         </Card>
@@ -271,10 +270,10 @@ export default function DashboardPage() {
                                         dataKey="total"
                                         name="Overall Score"
                                         stroke="#8b5cf6"
-                                        strokeWidth={4}
+                                        strokeWidth={3}
                                         fillOpacity={1}
                                         fill="url(#colorTotal)"
-                                        animationDuration={2000}
+                                        animationDuration={300}
                                         animationEasing="ease-out"
                                     />
                                     {topHabits.map((habit: any, index: number) => (
@@ -284,11 +283,11 @@ export default function DashboardPage() {
                                             dataKey={habit.key}
                                             name={habit.name}
                                             stroke={["#3b82f6", "#10b981", "#f43f5e"][index % 3]}
-                                            strokeWidth={2.5}
+                                            strokeWidth={2}
                                             dot={false}
-                                            activeDot={{ r: 6, strokeWidth: 0, fill: ["#3b82f6", "#10b981", "#f43f5e"][index % 3] }}
+                                            activeDot={{ r: 5, strokeWidth: 0, fill: ["#3b82f6", "#10b981", "#f43f5e"][index % 3] }}
                                             strokeOpacity={0.9}
-                                            animationDuration={2000}
+                                            animationDuration={300}
                                             animationEasing="ease-out"
                                         />
                                     ))}
@@ -368,9 +367,9 @@ export default function DashboardPage() {
                                     <YAxis stroke="#888888" fontSize={12} fontWeight={500} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`} dx={-15} />
                                     <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#ec4899', strokeWidth: 2, strokeDasharray: '6 6', opacity: 0.5 }} />
                                     <Legend iconType="circle" wrapperStyle={{ paddingTop: '25px', fontSize: '12px', fontWeight: 600 }} />
-                                    <Area type="monotone" dataKey="rate" name="Completion Rate" stroke="#ec4899" strokeWidth={4} fillOpacity={1} fill="url(#colorTodo)" animationDuration={2000} animationEasing="ease-out" />
-                                    <Line type="monotone" dataKey="high" name="High Priority" stroke="#f43f5e" strokeWidth={2.5} dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: "#f43f5e" }} strokeOpacity={0.9} animationDuration={2000} animationEasing="ease-out" />
-                                    <Line type="monotone" dataKey="medium" name="Medium Priority" stroke="#f59e0b" strokeWidth={2.5} dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: "#f59e0b" }} strokeOpacity={0.9} animationDuration={2000} animationEasing="ease-out" />
+                                    <Area type="monotone" dataKey="rate" name="Completion Rate" stroke="#ec4899" strokeWidth={3} fillOpacity={1} fill="url(#colorTodo)" animationDuration={300} animationEasing="ease-out" />
+                                    <Line type="monotone" dataKey="high" name="High Priority" stroke="#f43f5e" strokeWidth={2} dot={false} activeDot={{ r: 5, strokeWidth: 0, fill: "#f43f5e" }} strokeOpacity={0.9} animationDuration={300} animationEasing="ease-out" />
+                                    <Line type="monotone" dataKey="medium" name="Medium Priority" stroke="#f59e0b" strokeWidth={2} dot={false} activeDot={{ r: 5, strokeWidth: 0, fill: "#f59e0b" }} strokeOpacity={0.9} animationDuration={300} animationEasing="ease-out" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
@@ -418,9 +417,9 @@ export default function DashboardPage() {
                                     <YAxis stroke="#888888" fontSize={12} fontWeight={500} tickLine={false} axisLine={false} tickFormatter={(value) => `৳${value}`} dx={-15} />
                                     <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#10b981', strokeWidth: 2, strokeDasharray: '6 6', opacity: 0.5 }} />
                                     <Legend iconType="circle" wrapperStyle={{ paddingTop: '25px', fontSize: '12px', fontWeight: 600 }} />
-                                    <Area type="monotone" dataKey="saved" name="Net Savings" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorBudget)" animationDuration={2000} animationEasing="ease-out" />
-                                    <Line type="monotone" dataKey="income" name="Income" stroke="#34d399" strokeWidth={2.5} dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: "#34d399" }} strokeOpacity={0.9} animationDuration={2000} animationEasing="ease-out" />
-                                    <Line type="monotone" dataKey="expense" name="Expense" stroke="#f43f5e" strokeWidth={2.5} dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: "#f43f5e" }} strokeOpacity={0.9} animationDuration={2000} animationEasing="ease-out" />
+                                    <Area type="monotone" dataKey="saved" name="Net Savings" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorBudget)" animationDuration={300} animationEasing="ease-out" />
+                                    <Line type="monotone" dataKey="income" name="Income" stroke="#34d399" strokeWidth={2} dot={false} activeDot={{ r: 5, strokeWidth: 0, fill: "#34d399" }} strokeOpacity={0.9} animationDuration={300} animationEasing="ease-out" />
+                                    <Line type="monotone" dataKey="expense" name="Expense" stroke="#f43f5e" strokeWidth={2} dot={false} activeDot={{ r: 5, strokeWidth: 0, fill: "#f43f5e" }} strokeOpacity={0.9} animationDuration={300} animationEasing="ease-out" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>

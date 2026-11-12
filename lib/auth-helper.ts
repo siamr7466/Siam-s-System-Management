@@ -3,8 +3,12 @@ import { authOptions } from "./auth";
 import { prisma } from "./prisma";
 
 export async function getSessionUserId() {
-    const session = await getServerSession(authOptions);
-    if (session?.user?.id) return session.user.id;
+    try {
+        const session = await getServerSession(authOptions);
+        if (session?.user?.id) return session.user.id;
+    } catch (sessionErr) {
+        // Fall through to database lookup
+    }
 
     // "No Auth" Fallback: Use the first user in the database or create one
     try {
@@ -14,6 +18,7 @@ export async function getSessionUserId() {
             console.log("DB_DIAGNOSTIC: No users found. Creating default...");
             firstUser = await prisma.user.create({
                 data: {
+                    id: "default-user-id",
                     email: "siamrahman7466@gmail.com",
                     name: "Siam Rahman",
                 }
@@ -24,9 +29,6 @@ export async function getSessionUserId() {
         return firstUser.id;
     } catch (error: any) {
         console.error("DB_CRITICAL_ERROR: Connection failed!", error.message);
-        console.error("DB_CRITICAL_STACK:", error.stack);
-        // If we can't even reach the DB, we return a fallback string
-        // but this will likely cause foreign key errors in subsequent calls
-        return "guest-user-id";
+        return "default-user-id";
     }
 }

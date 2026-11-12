@@ -213,24 +213,20 @@ export default function HabitsPage() {
         pieData[1].value = 1; // Show empty ring
     }
 
-    // Animation Variants
+    // Animation Variants (Snappy & Fast)
     const containerVariants = {
-        hidden: { opacity: 0, y: 20 },
+        hidden: { opacity: 0 },
         show: {
             opacity: 1,
-            y: 0,
             transition: {
-                staggerChildren: 0.1,
-                delayChildren: 0.3,
-                type: "spring",
-                stiffness: 100
-            } as any
+                staggerChildren: 0.05
+            }
         }
     } as const;
 
     const itemVariants = {
-        hidden: { opacity: 0, y: 20 },
-        show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 50 } }
+        hidden: { opacity: 0, y: 10 },
+        show: { opacity: 1, y: 0, transition: { duration: 0.15 } }
     } as const;
 
     return (

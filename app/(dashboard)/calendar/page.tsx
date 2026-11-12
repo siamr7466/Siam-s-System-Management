@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, Plus, CheckCircle2, ListTodo, LucideIcon, Calendar as CalendarIcon, X, TrendingUp, TrendingDown, PiggyBank } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, CheckCircle2, ListTodo, LucideIcon, Calendar as CalendarIcon, X, TrendingUp, TrendingDown, PiggyBank, BookOpen } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, addDays, parseISO, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,6 +29,7 @@ export default function CalendarPage() {
     const [incomes, setIncomes] = React.useState<any[]>([]);
     const [expenses, setExpenses] = React.useState<any[]>([]);
     const [savings, setSavings] = React.useState<any[]>([]);
+    const [blogPosts, setBlogPosts] = React.useState<any[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
 
     // New Event State
@@ -60,6 +61,7 @@ export default function CalendarPage() {
             setIncomes(data.incomes || []);
             setExpenses(data.expenses || []);
             setSavings(data.savings || []);
+            setBlogPosts(data.blogPosts || []);
         } catch (error) {
             toast.error("Could not load calendar data");
         } finally {
@@ -132,13 +134,17 @@ export default function CalendarPage() {
             });
         });
 
-        // 2. Tasks
-        tasks.filter(task => task.dueDate && isSameDay(parseAsFloating(task.dueDate), day)).forEach(task => {
+        // 2. Tasks (Matches Due Date OR Creation Date)
+        tasks.filter(task => {
+            const taskDate = task.dueDate ? parseAsFloating(task.dueDate) : parseAsFloating(task.createdAt);
+            return isSameDay(taskDate, day);
+        }).forEach(task => {
+            const isDone = task.status === "DONE";
             items.push({
                 id: task.id,
-                title: task.title,
+                title: `${isDone ? "✓ " : ""}${task.title}`,
                 type: "task",
-                color: "#f43f5e",
+                color: isDone ? "#10b981" : (task.priority === "HIGH" ? "#f43f5e" : "#f59e0b"),
                 icon: ListTodo
             });
         });
@@ -159,7 +165,7 @@ export default function CalendarPage() {
         incomes.filter(income => isSameDay(parseAsFloating(income.date), day)).forEach(income => {
             items.push({
                 id: income.id,
-                title: `${income.source}: +$${income.amount}`,
+                title: `${income.source}: +৳${income.amount.toLocaleString()}`,
                 type: "income",
                 color: "#10b981", // Emerald
                 icon: TrendingUp
@@ -170,7 +176,7 @@ export default function CalendarPage() {
         expenses.filter(expense => isSameDay(parseAsFloating(expense.date), day)).forEach(expense => {
             items.push({
                 id: expense.id,
-                title: `${expense.category}: -$${expense.amount}`,
+                title: `${expense.category}: -৳${expense.amount.toLocaleString()}`,
                 type: "expense",
                 color: "#f43f5e", // Rose
                 icon: TrendingDown
@@ -181,10 +187,21 @@ export default function CalendarPage() {
         savings.filter(saving => isSameDay(parseAsFloating(saving.date), day)).forEach(saving => {
             items.push({
                 id: saving.id,
-                title: `Saving: $${saving.amount}`,
+                title: `Saving: ৳${saving.amount.toLocaleString()}`,
                 type: "saving",
                 color: "#8b5cf6", // Violet
                 icon: PiggyBank
+            });
+        });
+
+        // 7. Blog Posts
+        blogPosts.filter(post => isSameDay(parseAsFloating(post.createdAt), day)).forEach(post => {
+            items.push({
+                id: post.id,
+                title: `Blog: ${post.title}`,
+                type: "blog",
+                color: post.category?.color || "#3b82f6", // Blue/Category
+                icon: BookOpen
             });
         });
 
@@ -401,7 +418,19 @@ export default function CalendarPage() {
                     <div className="w-2 h-2 rounded-full bg-[#f43f5e]" /> Todos
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#3b82f6]" /> Custom Events
+                    <div className="w-2 h-2 rounded-full bg-[#10b981]" /> Income
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-[#f43f5e]" /> Expense
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-[#8b5cf6]" /> Savings
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-[#3b82f6]" /> Blog Posts
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-[#0ea5e9]" /> Custom Events
                 </div>
             </div>
         </motion.div>
